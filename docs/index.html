@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>HSE Inspection & Compliance Portal</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <style>
+    :root {
+      --primary-color: #0f766e;
+      --primary-dark: #115e59;
+      --bg-color: #f8fafc;
+    }
+    body {
+      background-color: var(--bg-color);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: #1e293b;
+      padding-bottom: 30px;
+    }
+    .auth-wrapper {
+      max-width: 400px;
+      margin: 50px auto 20px auto;
+    }
+    .main-container {
+      max-width: 680px;
+      margin: 0 auto;
+    }
+    .card-custom {
+      background: #ffffff;
+      border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+    .card-task {
+      border-left: 5px solid var(--primary-color);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .card-task:active {
+      transform: scale(0.99);
+    }
+    .badge-target {
+      background-color: #fef2f2;
+      color: #991b1b;
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #fecaca;
+    }
+    .badge-zone {
+      background-color: #f0fdfa;
+      color: var(--primary-dark);
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #ccfbf1;
+    }
+    .badge-cat {
+      background-color: #f1f5f9;
+      color: #475569;
+      font-weight: 600;
+      font-size: 0.75rem;
+      padding: 4px 8px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+    }
+    .btn-portal-primary {
+      background-color: var(--primary-color);
+      color: #ffffff;
+      border: none;
+      font-weight: 600;
+    }
+    .btn-portal-primary:hover, .btn-portal-primary:focus {
+      background-color: var(--primary-dark);
+      color: #ffffff;
+    }
+    .nav-pills .nav-link {
+      color: #64748b;
+      font-weight: 600;
+      border-radius: 8px;
+    }
+    .nav-pills .nav-link.active {
+      background-color: var(--primary-color);
+      color: #ffffff;
+    }
+    .filter-btn {
+      font-size: 0.8rem;
+      font-weight: 600;
+      border-radius: 20px;
+      padding: 4px 12px;
+      border: 1px solid #cbd5e1;
+      background: #ffffff;
+      color: #475569;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .filter-btn.active {
+      background-color: var(--primary-color);
+      color: #ffffff;
+      border-color: var(--primary-color);
+    }
+    .sub-filter-btn {
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 15px;
+      padding: 3px 10px;
+      border: 1px dashed #cbd5e1;
+      background: #f8fafc;
+      color: #64748b;
+      cursor: pointer;
+    }
+    .sub-filter-btn.active {
+      background-color: #0284c7;
+      color: #ffffff;
+      border-color: #0284c7;
+      border-style: solid;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ==================== 1. LOGIN SCREEN ==================== -->
+  <div id="loginSection" class="auth-wrapper px-3" style="display: none;">
+    <div class="card card-custom p-4 shadow-sm text-center">
+      <div class="mb-3">
+        <i class="fa-solid fa-shield-halved text-success fa-3x"></i>
+      </div>
+      <h5 class="fw-bold mb-1">HSE Inspection Portal</h5>
+      <p class="text-muted small mb-4">Sign in to access your assigned inspections & tasks</p>
+
+      <form id="loginForm" onsubmit="event.preventDefault(); handleLogin();">
+        <div class="form-floating mb-3 text-start">
+          <input type="text" class="form-control" id="loginUser" placeholder="Username" required autocomplete="username">
+          <label for="loginUser">Username (e.g. inam, afnan, saleem)</label>
+        </div>
+        <div class="form-floating mb-3 text-start">
+          <input type="password" class="form-control" id="loginPin" placeholder="PIN" required autocomplete="current-password">
+          <label for="loginPin">PIN (e.g. 1234)</label>
+        </div>
+        <button type="submit" class="btn btn-portal-primary w-100 py-2" id="btnLogin">
+          <i class="fa-solid fa-right-to-bracket me-2"></i>Sign In
+        </button>
+      </form>
+      <div id="loginError" class="alert alert-danger py-2 mt-3 small" style="display: none;"></div>
+    </div>
+  </div>
+
+  <!-- ==================== 2. MAIN APPLICATION ==================== -->
+  <div id="appSection" class="main-container px-3 pt-3" style="display: none;">
+    <!-- Top Bar -->
+    <div class="card card-custom p-3 mb-3 d-flex flex-row justify-content-between align-items-center">
+      <div>
+        <div class="fw-bold text-dark fs-6" id="headerUserName">Officer Name</div>
+        <div class="small text-muted" id="headerUserRole">Role | Zones</div>
+      </div>
+      <button class="btn btn-outline-danger btn-sm" onclick="handleLogout()" title="Logout">
+        <i class="fa-solid fa-power-off"></i>
+      </button>
+    </div>
+
+    <!-- Navigation Pills -->
+    <ul class="nav nav-pills nav-fill mb-3 bg-white p-1 rounded-3 shadow-sm border">
+      <li class="nav-item">
+        <a class="nav-link active" id="tabLinkPending" href="#" onclick="switchView('pending')">
+          <i class="fa-solid fa-clock-rotate-left me-1"></i> Pending Items
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="tabLinkNew" href="#" onclick="switchView('new')">
+          <i class="fa-solid fa-circle-plus me-1"></i> New Inspection
+        </a>
+      </li>
+    </ul>
+
+    <!-- VIEW A: PENDING ACTIONS LIST -->
+    <div id="viewPending">
+      <!-- MAIN CATEGORY FILTER BUTTONS -->
+      <div class="d-flex flex-wrap gap-2 mb-2 px-1" id="categoryFilterRow">
+        <button class="filter-btn active" id="filterBtnAll" onclick="setCategoryFilter('ALL')">
+          <i class="fa-solid fa-layer-group"></i> All <span class="badge bg-secondary rounded-pill ms-1" id="countAll">0</span>
+        </button>
+        <button class="filter-btn" id="filterBtnGen" onclick="setCategoryFilter('Generator')">
+          <i class="fa-solid fa-bolt text-warning"></i> Generator <span class="badge bg-light text-dark rounded-pill ms-1 border" id="countGen">0</span>
+        </button>
+        <button class="filter-btn" id="filterBtnEquip" onclick="setCategoryFilter('Equipment')">
+          <i class="fa-solid fa-truck-monster text-primary"></i> Equipment <span class="badge bg-light text-dark rounded-pill ms-1 border" id="countEquip">0</span>
+        </button>
+        <button class="filter-btn" id="filterBtnScaff" onclick="setCategoryFilter('Scaffolding')">
+          <i class="fa-solid fa-person-digging text-danger"></i> Scaffolding <span class="badge bg-light text-dark rounded-pill ms-1 border" id="countScaff">0</span>
+        </button>
+      </div>
+
+      <!-- GENERATOR SUB-CATEGORIES ROW -->
+      <div class="p-2 mb-3 bg-white rounded-3 border shadow-sm" id="generatorSubFilterBox" style="display: none;">
+        <div class="small fw-bold text-muted mb-1 px-1">GENERATOR SUB-ITEMS:</div>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="sub-filter-btn active" id="subBtnAll" onclick="setGeneratorSubFilter('ALL')">
+            ALL (<span id="countSubAll">0</span>)
+          </button>
+          <button class="sub-filter-btn" id="subBtnGenBody" onclick="setGeneratorSubFilter('Generators')">
+            <i class="fa-solid fa-bolt text-warning me-1"></i>Generators (<span id="countSubGenBody">0</span>)
+          </button>
+          <button class="sub-filter-btn" id="subBtnDrip" onclick="setGeneratorSubFilter('Drip Tray')">
+            <i class="fa-solid fa-faucet-drip text-primary me-1"></i>Drip Tray (<span id="countSubDrip">0</span>)
+          </button>
+          <button class="sub-filter-btn" id="subBtnFe" onclick="setGeneratorSubFilter('Fire Extinguisher')">
+            <i class="fa-solid fa-fire-extinguisher text-danger me-1"></i>Fire Extinguisher (<span id="countSubFe">0</span>)
+          </button>
+          <button class="sub-filter-btn" id="subBtnDb" onclick="setGeneratorSubFilter('DB Panel')">
+            <i class="fa-solid fa-plug text-warning me-1"></i>DBs (<span id="countSubDb">0</span>)
+          </button>
+        </div>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mb-2 px-1">
+        <span class="text-muted small fw-bold text-uppercase" id="currentCategoryTitle">All Open Actions</span>
+        <button class="btn btn-sm btn-light border" onclick="fetchActionItems()">
+          <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh
+        </button>
+      </div>
+
+      <div id="pendingLoader" class="text-center py-5">
+        <div class="spinner-border text-teal" style="color: var(--primary-color);" role="status"></div>
+        <div class="text-muted small mt-2">Loading assigned actions...</div>
+      </div>
+
+      <div id="pendingContainer"></div>
+    </div>
+
+    <!-- VIEW B: NEW INSPECTION FORM -->
+    <div id="viewNew" style="display: none;">
+      <div class="card card-custom p-3 p-md-4">
+        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+          <i class="fa-solid fa-bolt text-warning me-2"></i>Generator Inspection Entry
+        </h6>
+
+        <form id="inspectionForm" onsubmit="event.preventDefault(); handleNewInspectionSubmit();">
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Zone</label>
+              <select class="form-select form-select-sm" id="inpZone" required>
+                <option value="Zone A">Zone A</option>
+                <option value="Zone B">Zone B</option>
+                <option value="Zone D">Zone D</option>
+                <option value="Zone E">Zone E</option>
+                <option value="Zone F">Zone F</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Generator Count</label>
+              <input type="number" class="form-control form-control-sm" id="inpCount" value="1" min="1" required>
+            </div>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Building / Cluster / Location</label>
+            <input type="text" class="form-control form-control-sm" id="inpCluster" placeholder="e.g. Workshop Building, Cluster 04" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Voltage / Load & Remarks</label>
+            <input type="text" class="form-control form-control-sm" id="inpVoltage" placeholder="e.g. 400V / 230V Stable">
+          </div>
+
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <!-- Drip Tray -->
+            <div class="mb-3">
+              <label class="form-label small fw-bold">1. Drip Tray Available?</label>
+              <select class="form-select form-select-sm" id="inpDrip">
+                <option value="Yes">Yes (Available)</option>
+                <option value="No">No (Action Required)</option>
+              </select>
+              <input type="text" class="form-control form-control-sm mt-1" id="inpDripRemarks" placeholder="Drip tray remarks / specifications">
+            </div>
+
+            <!-- Fire Extinguisher -->
+            <div class="mb-3">
+              <label class="form-label small fw-bold">2. Fire Extinguisher Available?</label>
+              <select class="form-select form-select-sm" id="inpFe">
+                <option value="Yes">Yes (Available & Inspected)</option>
+                <option value="No">No (Action Required)</option>
+              </select>
+              <input type="text" class="form-control form-control-sm mt-1" id="inpFeRemarks" placeholder="Remarks (e.g. Discharged, Capacity, Missing)">
+            </div>
+
+            <!-- Distribution Board -->
+            <div class="mb-2">
+              <label class="form-label small fw-bold">3. DBs Available?</label>
+              <select class="form-select form-select-sm" id="inpDb">
+                <option value="Yes">Yes (Installed & Protected)</option>
+                <option value="No">No (Action Required)</option>
+              </select>
+              <input type="text" class="form-control form-control-sm mt-1" id="inpDbRemarks" placeholder="Remarks about DB panel">
+            </div>
+          </div>
+
+          <!-- Target Closeout Date -->
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-danger">
+              <i class="fa-regular fa-calendar-check me-1"></i>Target Closeout Date (If items required)
+            </label>
+            <input type="date" class="form-control form-control-sm" id="inpTargetDate">
+          </div>
+
+          <button type="submit" class="btn btn-portal-primary w-100 py-2" id="btnSubmitNew">
+            <i class="fa-solid fa-paper-plane me-2"></i>Save Inspection
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 3. CLOSEOUT ACTION MODAL ==================== -->
+  <div class="modal fade" id="closeoutModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header border-bottom-0 pb-0">
+          <h6 class="modal-title fw-bold" id="modalActionTitle">Action Closeout</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="modalRowIndex">
+          <input type="hidden" id="modalActionId">
+
+          <div class="p-2 mb-3 bg-light rounded border">
+            <div class="small text-muted">Deficiency Identified:</div>
+            <div class="fw-bold text-danger small mt-1" id="modalFindingText">Finding details here...</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Compliance Status</label>
+            <select class="form-select form-select-sm" id="modalStatus">
+              <option value="Closed">Closed (Item Rectified / Provided)</option>
+              <option value="In Progress">In Progress (Partially Addressed)</option>
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Rectification & Closeout Action Taken</label>
+            <textarea class="form-control form-control-sm" id="modalRemarks" rows="3" placeholder="Provide detailed remarks (e.g. 6kg DCP Fire Extinguisher installed with inspection tag)." required></textarea>
+          </div>
+
+          <button type="button" class="btn btn-portal-primary w-100 py-2" id="btnSaveCloseout" onclick="handleCloseoutSubmit()">
+            <i class="fa-solid fa-check me-1"></i> Submit Verification
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const GAS_API = "https://script.google.com/macros/s/AKfycbyWKBmoT8ATUCpg1EY7p9MzNty2oWhgP4T0nVgdt6sib45ex2O0CoNEZ54Nho814KgkrQ/exec";
+    let activeUser = null;
+    let modalObj = null;
+    let allFetchedActions = [];
+    let activeCategory = "ALL";
+    let activeGeneratorSub = "ALL";
+
+    document.addEventListener("DOMContentLoaded", () => {
+      modalObj = new bootstrap.Modal(document.getElementById('closeoutModal'));
+
+      const cached = localStorage.getItem("hse_portal_session");
+      if (cached) {
+        try {
+          activeUser = JSON.parse(cached);
+          displayApp();
+        } catch (e) {
+          localStorage.removeItem("hse_portal_session");
+          showLogin();
+        }
+      } else {
+        showLogin();
+      }
+    });
+
+    function showLogin() {
+      document.getElementById('loginSection').style.display = "block";
+      document.getElementById('appSection').style.display = "none";
+    }
+
+    function handleLogin() {
+      const u = document.getElementById('loginUser').value.trim();
+      const p = document.getElementById('loginPin').value.trim();
+      const btn = document.getElementById('btnLogin');
+      const errBox = document.getElementById('loginError');
+
+      if (!u || !p) return;
+
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Checking...';
+      errBox.style.display = 'none';
+
+      callApi("login", { username: u, pin: p })
+        .then(res => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-2"></i>Sign In';
+          if (res.success) {
+            activeUser = res.user;
+            localStorage.setItem("hse_portal_session", JSON.stringify(activeUser));
+            displayApp();
+          } else {
+            errBox.innerText = res.message;
+            errBox.style.display = 'block';
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-right-to-bracket me-2"></i>Sign In';
+          errBox.innerText = "Connection failed: " + err.toString();
+          errBox.style.display = 'block';
+        });
+    }
+
+    function handleLogout() {
+      localStorage.removeItem("hse_portal_session");
+      activeUser = null;
+      document.getElementById('loginForm').reset();
+      showLogin();
+    }
+
+    function displayApp() {
+      document.getElementById('loginSection').style.display = "none";
+      document.getElementById('appSection').style.display = "block";
+      document.getElementById('headerUserName').innerText = activeUser.name;
+      document.getElementById('headerUserRole').innerText = activeUser.role + " | " + activeUser.assignedZones.join(", ");
+      
+      switchView('pending');
+    }
+
+    function switchView(viewName) {
+      if (viewName === 'pending') {
+        document.getElementById('viewPending').style.display = "block";
+        document.getElementById('viewNew').style.display = "none";
+        document.getElementById('tabLinkPending').classList.add('active');
+        document.getElementById('tabLinkNew').classList.remove('active');
+        fetchActionItems();
+      } else {
+        document.getElementById('viewPending').style.display = "none";
+        document.getElementById('viewNew').style.display = "block";
+        document.getElementById('tabLinkNew').classList.add('active');
+        document.getElementById('tabLinkPending').classList.remove('active');
+      }
+    }
+
+    function fetchActionItems() {
+      const loader = document.getElementById('pendingLoader');
+      const container = document.getElementById('pendingContainer');
+      loader.style.display = "block";
+      container.innerHTML = "";
+
+      callApi("actions", { user: JSON.stringify(activeUser) })
+        .then(items => {
+          loader.style.display = "none";
+          allFetchedActions = items || [];
+          updateCategoryCounters();
+          renderActionCards();
+        })
+        .catch(err => {
+          loader.style.display = "none";
+          container.innerHTML = `<div class="alert alert-danger small">Error loading items: ${err.toString()}</div>`;
+        });
+    }
+
+    function updateCategoryCounters() {
+      const genItems = allFetchedActions.filter(x => x.category === 'Generator');
+      const equipCount = allFetchedActions.filter(x => x.category === 'Equipment').length;
+      const scaffCount = allFetchedActions.filter(x => x.category === 'Scaffolding').length;
+
+      document.getElementById('countAll').innerText = allFetchedActions.length;
+      document.getElementById('countGen').innerText = genItems.length;
+      document.getElementById('countEquip').innerText = equipCount;
+      document.getElementById('countScaff').innerText = scaffCount;
+
+      // Sub-filter counts for Generator
+      document.getElementById('countSubAll').innerText = genItems.length;
+      document.getElementById('countSubDrip').innerText = genItems.filter(x => x.item.toLowerCase().includes('drip')).length;
+      document.getElementById('countSubFe').innerText = genItems.filter(x => x.item.toLowerCase().includes('fire') || x.item.toLowerCase().includes('extinguisher')).length;
+      document.getElementById('countSubDb').innerText = genItems.filter(x => x.item.toLowerCase().includes('db')).length;
+      document.getElementById('countSubGenBody').innerText = genItems.filter(x => {
+        const itm = x.item.toLowerCase();
+        return itm.includes('generator') || (!itm.includes('drip') && !itm.includes('fire') && !itm.includes('extinguisher') && !itm.includes('db'));
+      }).length;
+    }
+
+    function setCategoryFilter(cat) {
+      activeCategory = cat;
+      activeGeneratorSub = "ALL"; // Reset sub filter
+      
+      // Toggle main button states
+      document.getElementById('filterBtnAll').classList.toggle('active', cat === 'ALL');
+      document.getElementById('filterBtnGen').classList.toggle('active', cat === 'Generator');
+      document.getElementById('filterBtnEquip').classList.toggle('active', cat === 'Equipment');
+      document.getElementById('filterBtnScaff').classList.toggle('active', cat === 'Scaffolding');
+
+      // Show / Hide Generator Sub-Category Box
+      const subBox = document.getElementById('generatorSubFilterBox');
+      if (cat === 'Generator') {
+        subBox.style.display = 'block';
+        resetSubButtonsUI();
+      } else {
+        subBox.style.display = 'none';
+      }
+
+      document.getElementById('currentCategoryTitle').innerText = cat === 'ALL' ? 'All Open Actions' : cat + ' Pending Actions';
+      renderActionCards();
+    }
+
+    function setGeneratorSubFilter(sub) {
+      activeGeneratorSub = sub;
+      
+      // Update sub button active UI
+      document.getElementById('subBtnAll').classList.toggle('active', sub === 'ALL');
+      document.getElementById('subBtnGenBody').classList.toggle('active', sub === 'Generators');
+      document.getElementById('subBtnDrip').classList.toggle('active', sub === 'Drip Tray');
+      document.getElementById('subBtnFe').classList.toggle('active', sub === 'Fire Extinguisher');
+      document.getElementById('subBtnDb').classList.toggle('active', sub === 'DB Panel');
+
+      document.getElementById('currentCategoryTitle').innerText = sub === 'ALL' 
+        ? 'Generator Pending Actions' 
+        : 'Generator &rsaquo; ' + sub + ' Pending Actions';
+
+      renderActionCards();
+    }
+
+    function resetSubButtonsUI() {
+      document.getElementById('subBtnAll').classList.add('active');
+      document.getElementById('subBtnGenBody').classList.remove('active');
+      document.getElementById('subBtnDrip').classList.remove('active');
+      document.getElementById('subBtnFe').classList.remove('active');
+      document.getElementById('subBtnDb').classList.remove('active');
+    }
+
+    function renderActionCards() {
+      const container = document.getElementById('pendingContainer');
+      container.innerHTML = "";
+
+      let itemsToDisplay = [];
+
+      if (activeCategory === 'ALL') {
+        itemsToDisplay = allFetchedActions;
+      } else if (activeCategory === 'Generator') {
+        const genItems = allFetchedActions.filter(x => x.category === 'Generator');
+        if (activeGeneratorSub === 'ALL') {
+          itemsToDisplay = genItems;
+        } else if (activeGeneratorSub === 'Generators') {
+          itemsToDisplay = genItems.filter(x => {
+            const itm = x.item.toLowerCase();
+            return itm.includes('generator') || (!itm.includes('drip') && !itm.includes('fire') && !itm.includes('extinguisher') && !itm.includes('db'));
+          });
+        } else if (activeGeneratorSub === 'Drip Tray') {
+          itemsToDisplay = genItems.filter(x => x.item.toLowerCase().includes('drip'));
+        } else if (activeGeneratorSub === 'Fire Extinguisher') {
+          itemsToDisplay = genItems.filter(x => x.item.toLowerCase().includes('fire') || x.item.toLowerCase().includes('extinguisher'));
+        } else if (activeGeneratorSub === 'DB Panel') {
+          itemsToDisplay = genItems.filter(x => x.item.toLowerCase().includes('db'));
+        }
+      } else {
+        itemsToDisplay = allFetchedActions.filter(x => x.category === activeCategory);
+      }
+
+      if (itemsToDisplay.length === 0) {
+        container.innerHTML = `
+          <div class="card card-custom p-4 text-center">
+            <i class="fa-regular fa-circle-check text-success fa-2x mb-2"></i>
+            <div class="fw-bold">No Pending Items!</div>
+            <div class="text-muted small">No open non-compliances found in this selected category.</div>
+          </div>`;
+        return;
+      }
+
+      let html = "";
+      itemsToDisplay.forEach(it => {
+        html += `
+          <div class="card card-custom card-task p-3 mb-2">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <div>
+                <span class="fw-bold text-dark me-1">${it.actionId}</span>
+                <span class="badge-cat">${it.category}</span>
+              </div>
+              <div>
+                <span class="badge-zone me-1">${it.zone}</span>
+                <span class="badge-target">Due: ${it.targetDate}</span>
+              </div>
+            </div>
+            <div class="fw-bold text-secondary mb-1">
+              ${it.item} &mdash; <span class="text-dark">${it.cluster}</span>
+            </div>
+            <div class="small text-danger bg-light p-2 rounded mb-2">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i>${it.finding}
+            </div>
+            <div class="d-flex justify-content-between align-items-center pt-1 border-top">
+              <span class="text-muted small">Reported: ${it.dateReported}</span>
+              <button class="btn btn-sm btn-portal-primary py-1 px-3" onclick='openCloseoutModal(${JSON.stringify(it)})'>
+                Verify & Close
+              </button>
+            </div>
+          </div>`;
+      });
+      container.innerHTML = html;
+    }
+
+    function openCloseoutModal(item) {
+      document.getElementById('modalActionTitle').innerText = "Closeout: " + item.actionId + " (" + item.zone + ")";
+      document.getElementById('modalRowIndex').value = item.rowIndex;
+      document.getElementById('modalActionId').value = item.actionId;
+      document.getElementById('modalFindingText').innerText = item.item + " - " + item.finding;
+      document.getElementById('modalRemarks').value = "";
+      modalObj.show();
+    }
+
+    function handleCloseoutSubmit() {
+      const remarks = document.getElementById('modalRemarks').value.trim();
+      if (!remarks) {
+        alert("Please provide closeout verification remarks.");
+        return;
+      }
+
+      const payload = {
+        rowIndex: document.getElementById('modalRowIndex').value,
+        actionId: document.getElementById('modalActionId').value,
+        status: document.getElementById('modalStatus').value,
+        remarks: remarks
+      };
+
+      const btn = document.getElementById('btnSaveCloseout');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+      callApi("closeout", {
+        payload: JSON.stringify(payload),
+        user: JSON.stringify(activeUser)
+      })
+        .then(res => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Submit Verification';
+          modalObj.hide();
+          if (res.success) {
+            fetchActionItems();
+          } else {
+            alert("Error: " + res.message);
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Submit Verification';
+          alert("Error: " + err.toString());
+        });
+    }
+
+    function handleNewInspectionSubmit() {
+      const payload = {
+        zone: document.getElementById('inpZone').value,
+        cluster: document.getElementById('inpCluster').value.trim(),
+        count: document.getElementById('inpCount').value,
+        voltage: document.getElementById('inpVoltage').value.trim(),
+        dripTray: document.getElementById('inpDrip').value,
+        dripRemarks: document.getElementById('inpDripRemarks').value.trim(),
+        fe: document.getElementById('inpFe').value,
+        feRemarks: document.getElementById('inpFeRemarks').value.trim(),
+        db: document.getElementById('inpDb').value,
+        dbRemarks: document.getElementById('inpDbRemarks').value.trim(),
+        targetDate: document.getElementById('inpTargetDate').value
+      };
+
+      if (!payload.cluster) {
+        alert("Please specify Building / Cluster.");
+        return;
+      }
+
+      const btn = document.getElementById('btnSubmitNew');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+      callApi("inspection", {
+        payload: JSON.stringify(payload),
+        user: JSON.stringify(activeUser)
+      })
+        .then(res => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Save Inspection';
+          if (res.success) {
+            alert("✅ " + res.message);
+            document.getElementById('inspectionForm').reset();
+            switchView('pending');
+          } else {
+            alert("Error: " + res.message);
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Save Inspection';
+          alert("Submission failed: " + err.toString());
+        });
+    }
+
+    function callApi(action, params) {
+      return new Promise((resolve, reject) => {
+        const cb = "hse_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
+        const query = new URLSearchParams();
+        query.set("action", action);
+        query.set("callback", cb);
+        Object.keys(params || {}).forEach(key => query.set(key, params[key]));
+        const script = document.createElement("script");
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error("Request timed out"));
+        }, 30000);
+        function cleanup() {
+          clearTimeout(timer);
+          try { delete window[cb]; } catch (e) { window[cb] = undefined; }
+          if (script.parentNode) script.parentNode.removeChild(script);
+        }
+        window[cb] = function (data) {
+          cleanup();
+          resolve(data);
+        };
+        script.onerror = function () {
+          cleanup();
+          reject(new Error("Could not reach the server"));
+        };
+        script.src = GAS_API + "?" + query.toString();
+        document.body.appendChild(script);
+      });
+    }
+  </script>
+</body>
+</html>
