@@ -120,6 +120,61 @@
       border-color: #0284c7;
       border-style: solid;
     }
+    .badge-target, .badge-zone, .badge-cat {
+      white-space: nowrap;
+    }
+    .portal-header-text {
+      min-width: 0;
+    }
+    .portal-header-text .small {
+      overflow-wrap: anywhere;
+    }
+    .task-top, .task-foot {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .task-id, .task-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .task-title {
+      font-weight: 700;
+      color: #334155;
+      margin-top: 8px;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .task-place {
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .task-finding {
+      overflow-wrap: anywhere;
+    }
+    .task-foot {
+      align-items: center;
+      padding-top: 8px;
+      margin-top: 8px;
+      border-top: 1px solid #e2e8f0;
+    }
+    @media (max-width: 520px) {
+      .task-top {
+        flex-direction: column;
+      }
+      .nav-pills .nav-link {
+        font-size: 0.82rem;
+        padding: 0.45rem 0.35rem;
+      }
+      .filter-btn {
+        font-size: 0.75rem;
+      }
+    }
   </style>
 </head>
 <body>
@@ -154,7 +209,7 @@
   <div id="appSection" class="main-container px-3 pt-3" style="display: none;">
     <!-- Top Bar -->
     <div class="card card-custom p-3 mb-3 d-flex flex-row justify-content-between align-items-center">
-      <div>
+      <div class="portal-header-text">
         <div class="fw-bold text-dark fs-6" id="headerUserName">Officer Name</div>
         <div class="small text-muted" id="headerUserRole">Role | Zones</div>
       </div>
@@ -537,6 +592,24 @@
       document.getElementById('subBtnDb').classList.remove('active');
     }
 
+    function formatDate(value) {
+      const text = String(value || "");
+      const parts = text.split("-");
+      if (parts.length !== 3) return text;
+      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      const month = months[Number(parts[1]) - 1];
+      if (!month || parts[0].length !== 4) return text;
+      return Number(parts[2]) + " " + month + " " + parts[0];
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
     function renderActionCards() {
       const container = document.getElementById('pendingContainer');
       container.innerHTML = "";
@@ -579,24 +652,23 @@
       itemsToDisplay.forEach(it => {
         html += `
           <div class="card card-custom card-task p-3 mb-2">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <div>
-                <span class="fw-bold text-dark me-1">${it.actionId}</span>
-                <span class="badge-cat">${it.category}</span>
+            <div class="task-top">
+              <div class="task-id">
+                <span class="fw-bold text-dark">${escapeHtml(it.actionId)}</span>
+                <span class="badge-cat">${escapeHtml(it.category)}</span>
               </div>
-              <div>
-                <span class="badge-zone me-1">${it.zone}</span>
-                <span class="badge-target">Due: ${it.targetDate}</span>
+              <div class="task-meta">
+                <span class="badge-zone">${escapeHtml(it.zone)}</span>
+                <span class="badge-target">Due ${escapeHtml(formatDate(it.targetDate))}</span>
               </div>
             </div>
-            <div class="fw-bold text-secondary mb-1">
-              ${it.item} &mdash; <span class="text-dark">${it.cluster}</span>
+            <div class="task-title">${escapeHtml(it.item)}</div>
+            <div class="task-place">${escapeHtml(it.cluster)}</div>
+            <div class="small text-danger bg-light p-2 rounded mt-2 task-finding">
+              <i class="fa-solid fa-triangle-exclamation me-1"></i>${escapeHtml(it.finding)}
             </div>
-            <div class="small text-danger bg-light p-2 rounded mb-2">
-              <i class="fa-solid fa-triangle-exclamation me-1"></i>${it.finding}
-            </div>
-            <div class="d-flex justify-content-between align-items-center pt-1 border-top">
-              <span class="text-muted small">Reported: ${it.dateReported}</span>
+            <div class="task-foot">
+              <span class="text-muted small">Reported ${escapeHtml(formatDate(it.dateReported))}</span>
               <button class="btn btn-sm btn-portal-primary py-1 px-3" onclick='openCloseoutModal(${JSON.stringify(it)})'>
                 Verify & Close
               </button>
