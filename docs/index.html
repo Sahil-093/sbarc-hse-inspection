@@ -701,32 +701,16 @@
     }
 
     function callApi(action, params) {
-      return new Promise((resolve, reject) => {
-        const cb = "hse_cb_" + Date.now() + "_" + Math.floor(Math.random() * 100000);
-        const query = new URLSearchParams();
-        query.set("action", action);
-        query.set("callback", cb);
-        Object.keys(params || {}).forEach(key => query.set(key, params[key]));
-        const script = document.createElement("script");
-        const timer = setTimeout(() => {
-          cleanup();
-          reject(new Error("Request timed out"));
-        }, 30000);
-        function cleanup() {
-          clearTimeout(timer);
-          try { delete window[cb]; } catch (e) { window[cb] = undefined; }
-          if (script.parentNode) script.parentNode.removeChild(script);
-        }
-        window[cb] = function (data) {
-          cleanup();
-          resolve(data);
-        };
-        script.onerror = function () {
-          cleanup();
-          reject(new Error("Could not reach the server"));
-        };
-        script.src = GAS_API + "?" + query.toString();
-        document.body.appendChild(script);
+      const query = new URLSearchParams();
+      query.set("action", action);
+      Object.keys(params || {}).forEach(key => query.set(key, params[key]));
+      return fetch(GAS_API + "?" + query.toString(), {
+        method: "GET",
+        credentials: "omit",
+        redirect: "follow"
+      }).then(response => {
+        if (!response.ok) throw new Error("Could not reach the server");
+        return response.json();
       });
     }
   </script>
