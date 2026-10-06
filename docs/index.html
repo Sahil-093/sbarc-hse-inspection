@@ -291,6 +291,11 @@
         </div>
       </div>
 
+      <div class="d-flex flex-wrap gap-2 mb-2 px-1" id="equipmentScopeRow" style="display: none;">
+        <button type="button" class="filter-btn active" id="equipScopePending" onclick="setEquipmentScope('pending')">Pending</button>
+        <button type="button" class="filter-btn" id="equipScopeAll" onclick="setEquipmentScope('all')">All records</button>
+      </div>
+
       <div class="d-flex justify-content-between align-items-center mb-2 px-1">
         <span class="text-muted small fw-bold text-uppercase" id="currentCategoryTitle">All Open Actions</span>
         <button class="btn btn-sm btn-light border" onclick="refreshPending()">
@@ -549,6 +554,60 @@
     </div>
   </div>
 
+  <!-- ==================== EQUIPMENT UPDATE ==================== -->
+  <div class="modal fade" id="equipmentUpdateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header border-bottom-0 pb-0">
+          <h6 class="modal-title fw-bold" id="equipUpdateTitle">Update equipment</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="updSheetRow">
+          <div class="mb-2"><label class="form-label small fw-semibold">Contractor</label><input type="text" class="form-control form-control-sm" id="updContractor"></div>
+          <div class="mb-2"><label class="form-label small fw-semibold">Equipment Type</label><input type="text" class="form-control form-control-sm" id="updType"></div>
+          <div class="row g-2 mb-3">
+            <div class="col-6"><label class="form-label small fw-semibold">Brand</label><input type="text" class="form-control form-control-sm" id="updBrand"></div>
+            <div class="col-6"><label class="form-label small fw-semibold">Plate / ID</label><input type="text" class="form-control form-control-sm" id="updPlate"></div>
+          </div>
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">Equipment 3rd Party</div>
+            <select class="form-select form-select-sm mb-2" id="updThird"><option>Valid</option><option>Expired</option><option>Not Available</option><option>NA</option></select>
+            <input type="text" class="form-control form-control-sm mb-2" id="updSticker" placeholder="Sticker No.">
+            <div class="row g-2">
+              <div class="col-6"><label class="form-label small">Date of Issue</label><input type="date" class="form-control form-control-sm" id="updIssue"></div>
+              <div class="col-6"><label class="form-label small">Date of Expiry</label><input type="date" class="form-control form-control-sm" id="updExpiry"></div>
+            </div>
+          </div>
+          <div class="mb-2"><label class="form-label small fw-semibold">Operator / Driver</label><input type="text" class="form-control form-control-sm" id="updOperator"></div>
+          <div class="mb-3"><label class="form-label small fw-semibold">Iqama / ID</label><input type="text" class="form-control form-control-sm" id="updIqama"></div>
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">Licence</div>
+            <select class="form-select form-select-sm mb-2" id="updLicence"><option>Valid</option><option>Expired</option><option>Not Available</option><option>NA</option></select>
+            <label class="form-label small">Date of Expiry</label>
+            <input type="date" class="form-control form-control-sm" id="updLicenceExpiry">
+          </div>
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">Operator 3rd Party</div>
+            <select class="form-select form-select-sm mb-2" id="updOpThird"><option>Valid</option><option>Expired</option><option>Not Available</option><option>NA</option></select>
+            <div class="row g-2">
+              <div class="col-6"><label class="form-label small">Date of Issue</label><input type="date" class="form-control form-control-sm" id="updOpIssue"></div>
+              <div class="col-6"><label class="form-label small">Date of Expiry</label><input type="date" class="form-control form-control-sm" id="updOpExpiry"></div>
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6"><label class="form-label small fw-semibold">HERC</label><select class="form-select form-select-sm" id="updHerc"><option>Valid</option><option>No</option><option>NA</option><option>Not Available</option></select></div>
+            <div class="col-6"><label class="form-label small fw-semibold">Insurance</label><select class="form-select form-select-sm" id="updInsurance"><option>Valid</option><option>Expired</option><option>Not Available</option><option>NA</option></select></div>
+          </div>
+          <div class="mb-2"><label class="form-label small fw-semibold">Contact</label><input type="text" class="form-control form-control-sm" id="updContact"></div>
+          <div class="mb-2"><label class="form-label small fw-semibold">Inspected By</label><input type="text" class="form-control form-control-sm" id="updInspectedBy"></div>
+          <div class="mb-3"><label class="form-label small fw-semibold">Remarks</label><input type="text" class="form-control form-control-sm" id="updRemarks"></div>
+          <button type="button" class="btn btn-portal-primary w-100 py-2" id="btnSaveEquipmentUpdate" onclick="saveEquipmentUpdate()">Save update</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== 3. CLOSEOUT ACTION MODAL ==================== -->
   <div class="modal fade" id="closeoutModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -595,11 +654,14 @@
     let modalObj = null;
     let allFetchedActions = [];
     let equipmentRecords = [];
+    let equipmentScope = "pending";
+    let equipModalObj = null;
     let activeCategory = "ALL";
     let activeGeneratorSub = "ALL";
 
     document.addEventListener("DOMContentLoaded", () => {
       modalObj = new bootstrap.Modal(document.getElementById('closeoutModal'));
+      equipModalObj = new bootstrap.Modal(document.getElementById('equipmentUpdateModal'));
 
       const cached = localStorage.getItem("hse_portal_session");
       if (cached) {
@@ -729,7 +791,7 @@
             return;
           }
           equipmentRecords = rows || [];
-          document.getElementById('countEquip').innerText = equipmentRecords.length;
+          document.getElementById('countEquip').innerText = equipmentRecords.filter(row => row.pending).length;
           if (activeCategory === "Equipment") renderEquipmentCards();
         })
         .catch(err => {
@@ -773,22 +835,120 @@
 
       // Show / Hide Generator Sub-Category Box
       const subBox = document.getElementById('generatorSubFilterBox');
+      const equipScope = document.getElementById('equipmentScopeRow');
       if (cat === 'Generator') {
         subBox.style.display = 'block';
         resetSubButtonsUI();
       } else {
         subBox.style.display = 'none';
       }
+      equipScope.style.display = cat === 'Equipment' ? 'flex' : 'none';
 
       document.getElementById('currentCategoryTitle').innerText = cat === 'ALL'
         ? 'All Open Actions'
-        : (cat === 'Equipment' ? 'Equipment & Operators' : cat + ' Pending Actions');
+        : (cat === 'Equipment' ? (equipmentScope === 'pending' ? 'Equipment Pending' : 'All Equipment Records') : cat + ' Pending Actions');
       if (cat === "Equipment") {
         if (equipmentRecords.length) renderEquipmentCards();
         else fetchEquipmentRegister(true);
       } else {
         renderActionCards();
       }
+    }
+
+    function setEquipmentScope(scope) {
+      equipmentScope = scope;
+      document.getElementById('equipScopePending').classList.toggle('active', scope === 'pending');
+      document.getElementById('equipScopeAll').classList.toggle('active', scope === 'all');
+      renderEquipmentCards();
+    }
+
+    function setSelectValue(id, value) {
+      const select = document.getElementById(id);
+      const text = value || "NA";
+      const exists = Array.from(select.options).some(option => option.value === text);
+      if (!exists) {
+        const extra = document.createElement("option");
+        extra.value = text;
+        extra.textContent = text;
+        select.appendChild(extra);
+      }
+      select.value = text;
+    }
+
+    function openEquipmentUpdate(sheetRow) {
+      const row = equipmentRecords.find(item => item.sheetRow === sheetRow);
+      if (!row) return;
+      document.getElementById('equipUpdateTitle').innerText = (row.equipmentType || "Equipment") + " · " + (row.plate || "");
+      document.getElementById('updSheetRow').value = row.sheetRow;
+      document.getElementById('updContractor').value = row.contractor || "";
+      document.getElementById('updType').value = row.equipmentType || "";
+      document.getElementById('updBrand').value = row.brand || "";
+      document.getElementById('updPlate').value = row.plate || "";
+      setSelectValue('updThird', row.equipThirdParty);
+      document.getElementById('updSticker').value = row.stickerNo || "";
+      document.getElementById('updIssue').value = row.equipIssueIso || "";
+      document.getElementById('updExpiry').value = row.equipExpiryIso || "";
+      document.getElementById('updOperator').value = row.operatorName || "";
+      document.getElementById('updIqama').value = row.operatorId || "";
+      setSelectValue('updLicence', row.licence);
+      document.getElementById('updLicenceExpiry').value = row.licenceExpiryIso || "";
+      setSelectValue('updOpThird', row.operatorThirdParty);
+      document.getElementById('updOpIssue').value = row.operatorIssueIso || "";
+      document.getElementById('updOpExpiry').value = row.operatorExpiryIso || "";
+      setSelectValue('updHerc', row.herc);
+      setSelectValue('updInsurance', row.insurance);
+      document.getElementById('updContact').value = row.contact || "";
+      document.getElementById('updInspectedBy').value = (activeUser && activeUser.name) || row.inspectedBy || "";
+      document.getElementById('updRemarks').value = row.remarks || "";
+      equipModalObj.show();
+    }
+
+    function saveEquipmentUpdate() {
+      const original = equipmentRecords.find(item => item.sheetRow === Number(document.getElementById('updSheetRow').value));
+      const payload = {
+        sheetRow: document.getElementById('updSheetRow').value,
+        originalPlate: original ? original.plate : "",
+        plate: document.getElementById('updPlate').value.trim(),
+        contractor: document.getElementById('updContractor').value.trim(),
+        equipmentType: document.getElementById('updType').value.trim(),
+        brand: document.getElementById('updBrand').value.trim(),
+        equipThirdParty: document.getElementById('updThird').value,
+        stickerNo: document.getElementById('updSticker').value.trim(),
+        equipIssue: document.getElementById('updIssue').value,
+        equipExpiry: document.getElementById('updExpiry').value,
+        operatorName: document.getElementById('updOperator').value.trim(),
+        operatorId: document.getElementById('updIqama').value.trim(),
+        licence: document.getElementById('updLicence').value,
+        licenceExpiry: document.getElementById('updLicenceExpiry').value,
+        operatorThirdParty: document.getElementById('updOpThird').value,
+        operatorIssue: document.getElementById('updOpIssue').value,
+        operatorExpiry: document.getElementById('updOpExpiry').value,
+        herc: document.getElementById('updHerc').value,
+        insurance: document.getElementById('updInsurance').value,
+        contact: document.getElementById('updContact').value.trim(),
+        inspectedBy: document.getElementById('updInspectedBy').value.trim(),
+        remarks: document.getElementById('updRemarks').value.trim()
+      };
+
+      const btn = document.getElementById('btnSaveEquipmentUpdate');
+      btn.disabled = true;
+      btn.innerText = "Saving...";
+      callApi("equipmentUpdate", { payload: JSON.stringify(payload), user: JSON.stringify(activeUser) })
+        .then(res => {
+          btn.disabled = false;
+          btn.innerText = "Save update";
+          if (res && res.success) {
+            equipModalObj.hide();
+            fetchEquipmentRegister(true);
+          } else {
+            alert("Error: " + ((res && res.message) || "Update failed"));
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerText = "Save update";
+          alert("Update failed: " + err.toString());
+        });
     }
 
     function setGeneratorSubFilter(sub) {
@@ -848,18 +1008,20 @@
 
     function renderEquipmentCards() {
       const container = document.getElementById('pendingContainer');
-      document.getElementById('currentCategoryTitle').innerText = "Equipment & Operators";
-      if (!equipmentRecords.length) {
+      const pendingOnly = equipmentScope !== "all";
+      const rows = pendingOnly ? equipmentRecords.filter(row => row.pending) : equipmentRecords;
+      document.getElementById('currentCategoryTitle').innerText = pendingOnly ? "Equipment Pending" : "All Equipment Records";
+      if (!rows.length) {
         container.innerHTML = `
           <div class="card card-custom p-4 text-center">
-            <div class="fw-bold">No equipment records</div>
-            <div class="text-muted small">The equipment sheet did not return any rows.</div>
+            <div class="fw-bold">${pendingOnly ? "No pending equipment" : "No equipment records"}</div>
+            <div class="text-muted small">${pendingOnly ? "Nothing is expired or missing right now." : "The equipment sheet did not return any rows."}</div>
           </div>`;
         return;
       }
 
       let html = "";
-      equipmentRecords.forEach(row => {
+      rows.forEach(row => {
         const title = row.equipmentType || "Equipment";
         const brandPlate = [row.brand, row.plate].filter(Boolean).join(" · ");
         html += `
@@ -875,12 +1037,16 @@
             <div class="equip-line"><span>Operator</span><strong>${escapeHtml(row.operatorName || "—")}</strong></div>
             <div class="equip-line"><span>Iqama / ID</span><strong>${escapeHtml(row.operatorId || "—")}</strong></div>
             ${statusChip("Equipment 3rd party", row.equipThirdParty)}
+            <div class="equip-line"><span>Issue / Expiry</span><strong>${escapeHtml(row.equipIssue || "—")} · ${escapeHtml(row.equipExpiry || "—")}</strong></div>
             ${statusChip("Licence", row.licence)}
+            <div class="equip-line"><span>Licence expiry</span><strong>${escapeHtml(row.licenceExpiry || "—")}</strong></div>
             ${statusChip("Operator 3rd party", row.operatorThirdParty)}
+            <div class="equip-line"><span>Issue / Expiry</span><strong>${escapeHtml(row.operatorIssue || "—")} · ${escapeHtml(row.operatorExpiry || "—")}</strong></div>
             ${statusChip("Insurance", row.insurance)}
             ${statusChip("HERC", row.herc)}
             <div class="task-foot">
               <span class="text-muted small">${escapeHtml(row.inspectedBy || "")}${row.remarks ? " · " + escapeHtml(row.remarks) : ""}</span>
+              <button type="button" class="btn btn-sm btn-portal-primary py-1 px-3" onclick="openEquipmentUpdate(${Number(row.sheetRow)})">Update</button>
             </div>
           </div>`;
       });

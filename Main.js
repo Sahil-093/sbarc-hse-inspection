@@ -33,6 +33,8 @@ function apiResponse_(params) {
       result = recordEquipmentInspection(payload, user);
     } else if (params.action === "equipmentList") {
       result = getEquipmentRegister();
+    } else if (params.action === "equipmentUpdate") {
+      result = updateEquipmentRecord(payload, user);
     } else {
       result = { success: false, message: "Unknown action." };
     }

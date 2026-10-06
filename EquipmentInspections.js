@@ -88,25 +88,39 @@ function getEquipmentRegister() {
       const contractor = String(row[1] || "").trim();
       const equipmentType = String(row[2] || "").trim();
       if (!contractor && !equipmentType && !String(row[4] || "").trim()) continue;
+      const equipThirdParty = String(row[5] || "").trim();
+      const licence = String(row[11] || "").trim();
+      const operatorThirdParty = String(row[14] || "").trim();
+      const herc = String(row[17] || "").trim();
+      const insurance = String(row[18] || "").trim();
+      const pending = isEquipmentFail_(equipThirdParty) || isEquipmentFail_(licence) ||
+        isEquipmentFail_(operatorThirdParty) || isEquipmentFail_(herc) || isEquipmentFail_(insurance);
       records.push({
+        sheetRow: i + 1,
+        pending: pending,
         timestamp: formatCell_(row[0]),
         contractor: contractor,
         equipmentType: equipmentType,
         brand: String(row[3] || "").trim(),
         plate: String(row[4] || "").trim(),
-        equipThirdParty: String(row[5] || "").trim(),
+        equipThirdParty: equipThirdParty,
         stickerNo: String(row[6] || "").trim(),
         equipIssue: formatCell_(row[7]),
+        equipIssueIso: cellIso_(row[7]),
         equipExpiry: formatCell_(row[8]),
+        equipExpiryIso: cellIso_(row[8]),
         operatorName: String(row[9] || "").trim(),
         operatorId: String(row[10] || "").trim(),
-        licence: String(row[11] || "").trim(),
+        licence: licence,
         licenceExpiry: formatCell_(row[12]),
-        operatorThirdParty: String(row[14] || "").trim(),
+        licenceExpiryIso: cellIso_(row[12]),
+        operatorThirdParty: operatorThirdParty,
         operatorIssue: formatCell_(row[15]),
+        operatorIssueIso: cellIso_(row[15]),
         operatorExpiry: formatCell_(row[16]),
-        herc: String(row[17] || "").trim(),
-        insurance: String(row[18] || "").trim(),
+        operatorExpiryIso: cellIso_(row[16]),
+        herc: herc,
+        insurance: insurance,
         contact: String(row[19] || "").trim(),
         inspectedBy: String(row[20] || "").trim(),
         remarks: String(row[21] || "").trim()
@@ -117,6 +131,67 @@ function getEquipmentRegister() {
   } catch (err) {
     return { success: false, message: String(err) };
   }
+}
+
+function updateEquipmentRecord(formData, user) {
+  try {
+    const row = parseInt(formData.sheetRow, 10);
+    if (!row || row < 3) return { success: false, message: "Invalid equipment row." };
+
+    const equipSs = SpreadsheetApp.openById(EQUIPMENT_SPREADSHEET_ID);
+    const equipSheet = equipSs.getSheets().find(function (sheet) {
+      return sheet.getSheetId() === EQUIPMENT_SHEET_GID;
+    });
+    if (!equipSheet) return { success: false, message: "Equipment sheet tab was not found." };
+
+    const currentPlate = String(equipSheet.getRange(row, 5).getValue() || "").trim();
+    const originalPlate = String(formData.originalPlate || "").trim();
+    if (originalPlate && currentPlate && currentPlate !== originalPlate) {
+      return { success: false, message: "This row changed in the sheet. Refresh and try again." };
+    }
+
+    const values = [
+      [2, formData.contractor],
+      [3, formData.equipmentType],
+      [4, formData.brand],
+      [5, formData.plate],
+      [6, formData.equipThirdParty],
+      [7, formData.stickerNo],
+      [8, formatUsDate_(formData.equipIssue)],
+      [9, formatUsDate_(formData.equipExpiry)],
+      [10, formData.operatorName],
+      [11, formData.operatorId],
+      [12, formData.licence],
+      [13, formatUsDate_(formData.licenceExpiry)],
+      [15, formData.operatorThirdParty],
+      [16, formatUsDate_(formData.operatorIssue)],
+      [17, formatUsDate_(formData.operatorExpiry)],
+      [18, formData.herc],
+      [19, formData.insurance],
+      [20, formData.contact],
+      [21, formData.inspectedBy || (user && user.name) || ""],
+      [22, formData.remarks]
+    ];
+    values.forEach(function (pair) {
+      equipSheet.getRange(row, pair[0]).setValue(pair[1] || "");
+    });
+    return { success: true, message: "Equipment record updated." };
+  } catch (err) {
+    return { success: false, message: err.toString() };
+  }
+}
+
+function cellIso_(value) {
+  if (!value) return "";
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  }
+  const text = String(value).trim();
+  let match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (match) {
+    return match[3] + "-" + ("0" + match[1]).slice(-2) + "-" + ("0" + match[2]).slice(-2);
+  }
+  return "";
 }
 
 function readEquipmentRows_() {
