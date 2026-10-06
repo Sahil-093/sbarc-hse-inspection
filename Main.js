@@ -31,6 +31,8 @@ function apiResponse_(params) {
       result = recordGeneratorInspection(payload, user);
     } else if (params.action === "equipment") {
       result = recordEquipmentInspection(payload, user);
+    } else if (params.action === "equipmentList") {
+      result = getEquipmentRegister();
     } else {
       result = { success: false, message: "Unknown action." };
     }

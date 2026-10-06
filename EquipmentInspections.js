@@ -79,6 +79,70 @@ function recordEquipmentInspection(formData, user) {
   }
 }
 
+function getEquipmentRegister() {
+  try {
+    const rows = readEquipmentRows_();
+    const records = [];
+    for (let i = 2; i < rows.length; i++) {
+      const row = rows[i];
+      const contractor = String(row[1] || "").trim();
+      const equipmentType = String(row[2] || "").trim();
+      if (!contractor && !equipmentType && !String(row[4] || "").trim()) continue;
+      records.push({
+        timestamp: formatCell_(row[0]),
+        contractor: contractor,
+        equipmentType: equipmentType,
+        brand: String(row[3] || "").trim(),
+        plate: String(row[4] || "").trim(),
+        equipThirdParty: String(row[5] || "").trim(),
+        stickerNo: String(row[6] || "").trim(),
+        equipIssue: formatCell_(row[7]),
+        equipExpiry: formatCell_(row[8]),
+        operatorName: String(row[9] || "").trim(),
+        operatorId: String(row[10] || "").trim(),
+        licence: String(row[11] || "").trim(),
+        licenceExpiry: formatCell_(row[12]),
+        operatorThirdParty: String(row[14] || "").trim(),
+        operatorIssue: formatCell_(row[15]),
+        operatorExpiry: formatCell_(row[16]),
+        herc: String(row[17] || "").trim(),
+        insurance: String(row[18] || "").trim(),
+        contact: String(row[19] || "").trim(),
+        inspectedBy: String(row[20] || "").trim(),
+        remarks: String(row[21] || "").trim()
+      });
+    }
+    records.reverse();
+    return records;
+  } catch (err) {
+    return { success: false, message: String(err) };
+  }
+}
+
+function readEquipmentRows_() {
+  try {
+    const equipSs = SpreadsheetApp.openById(EQUIPMENT_SPREADSHEET_ID);
+    const equipSheet = equipSs.getSheets().find(function (sheet) {
+      return sheet.getSheetId() === EQUIPMENT_SHEET_GID;
+    });
+    if (!equipSheet) throw new Error("Equipment sheet tab was not found.");
+    return equipSheet.getDataRange().getValues();
+  } catch (err) {
+    const url = "https://docs.google.com/spreadsheets/d/" + EQUIPMENT_SPREADSHEET_ID +
+      "/export?format=csv&gid=" + EQUIPMENT_SHEET_GID;
+    const response = UrlFetchApp.fetch(url, { muteHttpExceptions: true, followRedirects: true });
+    if (response.getResponseCode() !== 200) throw err;
+    return Utilities.parseCsv(response.getContentText());
+  }
+}
+
+function formatCell_(value) {
+  if (value instanceof Date) {
+    return Utilities.formatDate(value, Session.getScriptTimeZone(), "d MMM yyyy");
+  }
+  return String(value || "").trim();
+}
+
 function formatUsDate_(iso) {
   if (!iso) return "";
   const parts = String(iso).split("-");

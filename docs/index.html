@@ -163,6 +163,25 @@
       margin-top: 8px;
       border-top: 1px solid #e2e8f0;
     }
+    .status-ok, .status-bad, .status-na {
+      font-weight: 700;
+      font-size: 0.75rem;
+      padding: 2px 8px;
+      border-radius: 6px;
+      white-space: nowrap;
+    }
+    .status-ok { background: #ecfdf5; color: #047857; }
+    .status-bad { background: #fef2f2; color: #b91c1c; }
+    .status-na { background: #f1f5f9; color: #475569; }
+    .equip-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      margin-top: 6px;
+      font-size: 0.86rem;
+    }
+    .equip-line span:first-child { color: #64748b; }
     @media (max-width: 520px) {
       .task-top {
         flex-direction: column;
@@ -274,7 +293,7 @@
 
       <div class="d-flex justify-content-between align-items-center mb-2 px-1">
         <span class="text-muted small fw-bold text-uppercase" id="currentCategoryTitle">All Open Actions</span>
-        <button class="btn btn-sm btn-light border" onclick="fetchActionItems()">
+        <button class="btn btn-sm btn-light border" onclick="refreshPending()">
           <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh
         </button>
       </div>
@@ -575,6 +594,7 @@
     let activeUser = null;
     let modalObj = null;
     let allFetchedActions = [];
+    let equipmentRecords = [];
     let activeCategory = "ALL";
     let activeGeneratorSub = "ALL";
 
@@ -675,11 +695,48 @@
           loader.style.display = "none";
           allFetchedActions = items || [];
           updateCategoryCounters();
-          renderActionCards();
+          if (activeCategory !== "Equipment") renderActionCards();
         })
         .catch(err => {
           loader.style.display = "none";
-          container.innerHTML = `<div class="alert alert-danger small">Error loading items: ${err.toString()}</div>`;
+          if (activeCategory !== "Equipment") {
+            container.innerHTML = `<div class="alert alert-danger small">Error loading items: ${err.toString()}</div>`;
+          }
+        });
+      if (!equipmentRecords.length) fetchEquipmentRegister(false);
+    }
+
+    function refreshPending() {
+      if (activeCategory === "Equipment") fetchEquipmentRegister(true);
+      else fetchActionItems();
+    }
+
+    function fetchEquipmentRegister(showLoader) {
+      const loader = document.getElementById('pendingLoader');
+      const container = document.getElementById('pendingContainer');
+      if (showLoader !== false && activeCategory === "Equipment") {
+        loader.style.display = "block";
+        container.innerHTML = "";
+      }
+
+      callApi("equipmentList", {})
+        .then(rows => {
+          if (activeCategory === "Equipment") loader.style.display = "none";
+          if (rows && rows.success === false) {
+            if (activeCategory === "Equipment") {
+              container.innerHTML = `<div class="alert alert-danger small">Could not load the equipment sheet: ${rows.message}</div>`;
+            }
+            return;
+          }
+          equipmentRecords = rows || [];
+          document.getElementById('countEquip').innerText = equipmentRecords.length;
+          if (activeCategory === "Equipment") renderEquipmentCards();
+        })
+        .catch(err => {
+          if (activeCategory === "Equipment") {
+            loader.style.display = "none";
+            container.innerHTML = `<div class="alert alert-danger small">Could not load the equipment sheet: ${err.toString()}</div>`;
+          }
         });
     }
 
@@ -690,7 +747,7 @@
 
       document.getElementById('countAll').innerText = allFetchedActions.length;
       document.getElementById('countGen').innerText = genItems.length;
-      document.getElementById('countEquip').innerText = equipCount;
+      if (!equipmentRecords.length) document.getElementById('countEquip').innerText = equipCount;
       document.getElementById('countScaff').innerText = scaffCount;
 
       // Sub-filter counts for Generator
@@ -723,8 +780,15 @@
         subBox.style.display = 'none';
       }
 
-      document.getElementById('currentCategoryTitle').innerText = cat === 'ALL' ? 'All Open Actions' : cat + ' Pending Actions';
-      renderActionCards();
+      document.getElementById('currentCategoryTitle').innerText = cat === 'ALL'
+        ? 'All Open Actions'
+        : (cat === 'Equipment' ? 'Equipment & Operators' : cat + ' Pending Actions');
+      if (cat === "Equipment") {
+        if (equipmentRecords.length) renderEquipmentCards();
+        else fetchEquipmentRegister(true);
+      } else {
+        renderActionCards();
+      }
     }
 
     function setGeneratorSubFilter(sub) {
@@ -768,6 +832,59 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;");
+    }
+
+    function statusClass(value) {
+      const text = String(value || "").trim().toLowerCase();
+      if (text === "valid" || text === "satisfactory") return "status-ok";
+      if (text === "expired" || text === "not available" || text === "no") return "status-bad";
+      return "status-na";
+    }
+
+    function statusChip(label, value) {
+      const shown = value || "—";
+      return `<div class="equip-line"><span>${label}</span><span class="${statusClass(value)}">${escapeHtml(shown)}</span></div>`;
+    }
+
+    function renderEquipmentCards() {
+      const container = document.getElementById('pendingContainer');
+      document.getElementById('currentCategoryTitle').innerText = "Equipment & Operators";
+      if (!equipmentRecords.length) {
+        container.innerHTML = `
+          <div class="card card-custom p-4 text-center">
+            <div class="fw-bold">No equipment records</div>
+            <div class="text-muted small">The equipment sheet did not return any rows.</div>
+          </div>`;
+        return;
+      }
+
+      let html = "";
+      equipmentRecords.forEach(row => {
+        const title = row.equipmentType || "Equipment";
+        const brandPlate = [row.brand, row.plate].filter(Boolean).join(" · ");
+        html += `
+          <div class="card card-custom card-task p-3 mb-2">
+            <div class="task-top">
+              <div class="task-id">
+                <span class="fw-bold text-dark">${escapeHtml(title)}</span>
+              </div>
+              <span class="text-muted small">${escapeHtml(row.timestamp)}</span>
+            </div>
+            <div class="task-title">${escapeHtml(brandPlate || row.plate || "")}</div>
+            <div class="task-place">${escapeHtml(row.contractor)}</div>
+            <div class="equip-line"><span>Operator</span><strong>${escapeHtml(row.operatorName || "—")}</strong></div>
+            <div class="equip-line"><span>Iqama / ID</span><strong>${escapeHtml(row.operatorId || "—")}</strong></div>
+            ${statusChip("Equipment 3rd party", row.equipThirdParty)}
+            ${statusChip("Licence", row.licence)}
+            ${statusChip("Operator 3rd party", row.operatorThirdParty)}
+            ${statusChip("Insurance", row.insurance)}
+            ${statusChip("HERC", row.herc)}
+            <div class="task-foot">
+              <span class="text-muted small">${escapeHtml(row.inspectedBy || "")}${row.remarks ? " · " + escapeHtml(row.remarks) : ""}</span>
+            </div>
+          </div>`;
+      });
+      container.innerHTML = html;
     }
 
     function renderActionCards() {
