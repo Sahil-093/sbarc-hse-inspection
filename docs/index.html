@@ -590,6 +590,37 @@
     </div>
   </div>
 
+  <!-- ==================== GENERATOR STATUS UPDATE ==================== -->
+  <div class="modal fade" id="generatorUpdateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content border-0 shadow">
+        <div class="modal-header border-bottom-0 pb-0">
+          <h6 class="modal-title fw-bold" id="genUpdateTitle">Update generator</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="genSheetRow">
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">Drip Tray</div>
+            <select class="form-select form-select-sm mb-2" id="genDrip"><option>Valid</option><option>Not Available</option><option>Expired</option></select>
+            <input type="text" class="form-control form-control-sm" id="genDripRemarks" placeholder="Drip tray remarks">
+          </div>
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">Fire Extinguisher</div>
+            <select class="form-select form-select-sm mb-2" id="genFe"><option>Valid</option><option>Not Available</option><option>Expired</option></select>
+            <input type="text" class="form-control form-control-sm" id="genFeRemarks" placeholder="Fire extinguisher remarks">
+          </div>
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">DB Panel</div>
+            <select class="form-select form-select-sm mb-2" id="genDb"><option>Valid</option><option>Not Available</option><option>Expired</option></select>
+            <input type="text" class="form-control form-control-sm" id="genDbRemarks" placeholder="DB panel remarks">
+          </div>
+          <button type="button" class="btn btn-portal-primary w-100 py-2" id="btnSaveGeneratorUpdate" onclick="saveGeneratorUpdate()">Save status</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ==================== EQUIPMENT UPDATE ==================== -->
   <div class="modal fade" id="equipmentUpdateModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
@@ -694,6 +725,7 @@
     let scaffoldRecords = [];
     let statusFilter = "all";
     let equipModalObj = null;
+    let genModalObj = null;
     let activeCategory = "ALL";
     let activeGeneratorSub = "ALL";
     let searchQueries = { ALL: "", Generator: "", Equipment: "", Scaffolding: "" };
@@ -701,6 +733,7 @@
     document.addEventListener("DOMContentLoaded", () => {
       modalObj = new bootstrap.Modal(document.getElementById('closeoutModal'));
       equipModalObj = new bootstrap.Modal(document.getElementById('equipmentUpdateModal'));
+      genModalObj = new bootstrap.Modal(document.getElementById('generatorUpdateModal'));
 
       const cached = localStorage.getItem("hse_portal_session");
       if (cached) {
@@ -926,6 +959,56 @@
       select.value = text;
     }
 
+    function openGeneratorUpdate(sheetRow) {
+      const row = generatorRecords.find(item => item.sheetRow === sheetRow);
+      if (!row) return;
+      document.getElementById('genUpdateTitle').innerText = (row.cluster || row.title || "Generator") + " · " + (row.zone || row.subtitle || "");
+      document.getElementById('genSheetRow').value = row.sheetRow;
+      const statusOf = (label) => ((row.statuses || []).find(item => item.label === label) || {}).value || "Not Available";
+      setSelectValue('genDrip', statusOf("Drip Tray"));
+      setSelectValue('genFe', statusOf("Fire Extinguisher"));
+      setSelectValue('genDb', statusOf("DB Panel"));
+      document.getElementById('genDripRemarks').value = row.dripRemarks || "";
+      document.getElementById('genFeRemarks').value = row.feRemarks || "";
+      document.getElementById('genDbRemarks').value = row.dbRemarks || "";
+      genModalObj.show();
+    }
+
+    function saveGeneratorUpdate() {
+      const original = generatorRecords.find(item => item.sheetRow === Number(document.getElementById('genSheetRow').value));
+      const payload = {
+        sheetRow: document.getElementById('genSheetRow').value,
+        originalZone: original ? original.zone : "",
+        originalCluster: original ? original.cluster : "",
+        originalWhen: original ? original.when : "",
+        drip: document.getElementById('genDrip').value,
+        dripRemarks: document.getElementById('genDripRemarks').value.trim(),
+        fe: document.getElementById('genFe').value,
+        feRemarks: document.getElementById('genFeRemarks').value.trim(),
+        db: document.getElementById('genDb').value,
+        dbRemarks: document.getElementById('genDbRemarks').value.trim()
+      };
+      const btn = document.getElementById('btnSaveGeneratorUpdate');
+      btn.disabled = true;
+      btn.innerText = "Saving...";
+      callApi("generatorUpdate", { payload: JSON.stringify(payload), user: JSON.stringify(activeUser) })
+        .then(res => {
+          btn.disabled = false;
+          btn.innerText = "Save status";
+          if (res && res.success) {
+            genModalObj.hide();
+            fetchRegisters();
+          } else {
+            alert("Error: " + ((res && res.message) || "Update failed"));
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerText = "Save status";
+          alert("Update failed: " + err.toString());
+        });
+    }
+
     function openEquipmentUpdate(sheetRow) {
       const row = equipmentRecords.find(item => item.sheetRow === sheetRow);
       if (!row) return;
@@ -1106,7 +1189,10 @@
             <div class="task-place">${escapeHtml(row.subtitle || "")}</div>
             ${chips}
             ${row.notes ? `<div class="small text-muted mt-2">${escapeHtml(row.notes)}</div>` : ""}
-            ${row.inspector ? `<div class="task-foot"><span class="text-muted small">${escapeHtml(row.inspector)}</span></div>` : ""}
+            <div class="task-foot">
+              <span class="text-muted small">${escapeHtml(row.inspector || "")}</span>
+              ${row.category === "Generator" ? `<button type="button" class="btn btn-sm btn-portal-primary py-1 px-3" onclick="openGeneratorUpdate(${Number(row.sheetRow)})">Update</button>` : ""}
+            </div>
           </div>`;
       });
       container.innerHTML = html;

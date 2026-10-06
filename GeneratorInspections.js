@@ -83,8 +83,13 @@ function getGeneratorRegister() {
         sheetRow: i + 1,
         title: cluster || "Generator",
         subtitle: zone,
+        zone: zone,
+        cluster: cluster,
         when: formatCell_(rows[i][0]),
         inspector: String(rows[i][11] || "").trim(),
+        dripRemarks: String(rows[i][6] || "").trim(),
+        feRemarks: String(rows[i][8] || "").trim(),
+        dbRemarks: String(rows[i][10] || "").trim(),
         notes: [rows[i][6], rows[i][8], rows[i][10]].map(function (item) {
           return String(item || "").trim();
         }).filter(Boolean).join(" · "),
@@ -97,6 +102,51 @@ function getGeneratorRegister() {
     }
     records.reverse();
     return records;
+  } catch (err) {
+    return { success: false, message: String(err) };
+  }
+}
+
+function generatorStatus_(value) {
+  const text = String(value || "").trim().toLowerCase();
+  if (text === "valid" || text === "yes") return "Valid";
+  if (text === "not available" || text === "no") return "Not Available";
+  if (text === "expired") return "Expired";
+  return "";
+}
+
+function updateGeneratorRecord(formData, user) {
+  try {
+    const row = parseInt(formData.sheetRow, 10);
+    if (!row || row < 2) return { success: false, message: "Invalid generator row." };
+
+    const sheet = SPREADSHEET.getSheetByName("Form Responses 1");
+    if (!sheet) return { success: false, message: "Generator sheet was not found." };
+
+    const zone = String(sheet.getRange(row, 2).getValue() || "").trim();
+    const cluster = String(sheet.getRange(row, 3).getValue() || "").trim();
+    const when = formatCell_(sheet.getRange(row, 1).getValue());
+    const sameRow = String(formData.originalZone || "").trim() === zone &&
+      String(formData.originalCluster || "").trim() === cluster &&
+      String(formData.originalWhen || "").trim() === when;
+    if (!sameRow) {
+      return { success: false, message: "This row changed in the sheet. Refresh and try again." };
+    }
+
+    const drip = generatorStatus_(formData.drip);
+    const fe = generatorStatus_(formData.fe);
+    const db = generatorStatus_(formData.db);
+    if (!drip || !fe || !db) {
+      return { success: false, message: "Choose Valid, Not Available, or Expired for each item." };
+    }
+
+    sheet.getRange(row, 6).setValue(drip);
+    sheet.getRange(row, 7).setValue(formData.dripRemarks || "");
+    sheet.getRange(row, 8).setValue(fe);
+    sheet.getRange(row, 9).setValue(formData.feRemarks || "");
+    sheet.getRange(row, 10).setValue(db);
+    sheet.getRange(row, 11).setValue(formData.dbRemarks || "");
+    return { success: true, message: "Generator status updated." };
   } catch (err) {
     return { success: false, message: String(err) };
   }
