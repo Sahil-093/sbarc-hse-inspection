@@ -29,6 +29,8 @@ function apiResponse_(params) {
       result = submitCloseout(payload, user);
     } else if (params.action === "inspection") {
       result = recordGeneratorInspection(payload, user);
+    } else if (params.action === "equipment") {
+      result = recordEquipmentInspection(payload, user);
     } else {
       result = { success: false, message: "Unknown action." };
     }

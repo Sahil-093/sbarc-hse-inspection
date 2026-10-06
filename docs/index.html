@@ -289,7 +289,15 @@
 
     <!-- VIEW B: NEW INSPECTION FORM -->
     <div id="viewNew" style="display: none;">
-      <div class="card card-custom p-3 p-md-4">
+      <div class="d-flex flex-wrap gap-2 mb-3">
+        <button type="button" class="filter-btn active" id="typeGenBtn" onclick="setInspectionType('generator')">
+          <i class="fa-solid fa-bolt text-warning"></i> Generator
+        </button>
+        <button type="button" class="filter-btn" id="typeEquipBtn" onclick="setInspectionType('equipment')">
+          <i class="fa-solid fa-truck-monster text-primary"></i> Equipment
+        </button>
+      </div>
+      <div class="card card-custom p-3 p-md-4" id="generatorFormCard">
         <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
           <i class="fa-solid fa-bolt text-warning me-2"></i>Generator Inspection Entry
         </h6>
@@ -364,6 +372,158 @@
 
           <button type="submit" class="btn btn-portal-primary w-100 py-2" id="btnSubmitNew">
             <i class="fa-solid fa-paper-plane me-2"></i>Save Inspection
+          </button>
+        </form>
+      </div>
+
+      <div class="card card-custom p-3 p-md-4" id="equipmentFormCard" style="display: none;">
+        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+          <i class="fa-solid fa-truck-monster text-primary me-2"></i>Equipment Inspection Entry
+        </h6>
+        <form id="equipmentForm" onsubmit="event.preventDefault(); handleEquipmentSubmit();">
+          <div class="row g-2 mb-2">
+            <div class="col-12 col-sm-6">
+              <label class="form-label small fw-semibold">Zone</label>
+              <select class="form-select form-select-sm" id="eqZone" required>
+                <option value="Zone A">Zone A</option>
+                <option value="Zone B">Zone B</option>
+                <option value="Zone D">Zone D</option>
+                <option value="Zone E">Zone E</option>
+                <option value="Zone F">Zone F</option>
+              </select>
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label small fw-semibold">Contractor Name</label>
+              <input type="text" class="form-control form-control-sm" id="eqContractor" required>
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Equipment Type</label>
+            <input type="text" class="form-control form-control-sm" id="eqType" placeholder="e.g. Telehandler, Backhoe loader" required>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-12 col-sm-6">
+              <label class="form-label small fw-semibold">Brand</label>
+              <input type="text" class="form-control form-control-sm" id="eqBrand" placeholder="e.g. JCB, Caterpillar">
+            </div>
+            <div class="col-12 col-sm-6">
+              <label class="form-label small fw-semibold">Plate / ID Number</label>
+              <input type="text" class="form-control form-control-sm" id="eqPlate" required>
+            </div>
+          </div>
+
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">Equipment 3rd Party</div>
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Status</label>
+              <select class="form-select form-select-sm" id="eqThird">
+                <option>Valid</option>
+                <option>Expired</option>
+                <option>Not Available</option>
+                <option>NA</option>
+              </select>
+            </div>
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Sticker No.</label>
+              <input type="text" class="form-control form-control-sm" id="eqSticker">
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Date of Issue</label>
+                <input type="date" class="form-control form-control-sm" id="eqIssue">
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Date of Expiry</label>
+                <input type="date" class="form-control form-control-sm" id="eqExpiry">
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Operator / Driver Name</label>
+            <input type="text" class="form-control form-control-sm" id="eqOperator">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Operator Iqama / ID No.</label>
+            <input type="text" class="form-control form-control-sm" id="eqIqama">
+          </div>
+
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">Licence</div>
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Status</label>
+              <select class="form-select form-select-sm" id="eqLicence">
+                <option>Valid</option>
+                <option>Expired</option>
+                <option>Not Available</option>
+                <option>NA</option>
+              </select>
+            </div>
+            <label class="form-label small fw-semibold">Date of Expiry</label>
+            <input type="date" class="form-control form-control-sm" id="eqLicenceExpiry">
+          </div>
+
+          <div class="bg-light p-3 rounded-3 mb-3 border">
+            <div class="small fw-bold mb-2">Operator 3rd Party</div>
+            <div class="mb-2">
+              <label class="form-label small fw-semibold">Status</label>
+              <select class="form-select form-select-sm" id="eqOpThird">
+                <option>Valid</option>
+                <option>Expired</option>
+                <option>Not Available</option>
+                <option>NA</option>
+              </select>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Date of Issue</label>
+                <input type="date" class="form-control form-control-sm" id="eqOpIssue">
+              </div>
+              <div class="col-6">
+                <label class="form-label small fw-semibold">Date of Expiry</label>
+                <input type="date" class="form-control form-control-sm" id="eqOpExpiry">
+              </div>
+            </div>
+          </div>
+
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">HERC Status</label>
+              <select class="form-select form-select-sm" id="eqHerc">
+                <option>Valid</option>
+                <option>No</option>
+                <option>NA</option>
+                <option>Not Available</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Insurance</label>
+              <select class="form-select form-select-sm" id="eqInsurance">
+                <option>Valid</option>
+                <option>Expired</option>
+                <option>Not Available</option>
+                <option>NA</option>
+              </select>
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Contact Number</label>
+            <input type="text" class="form-control form-control-sm" id="eqContact">
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Inspected By</label>
+            <input type="text" class="form-control form-control-sm" id="eqInspectedBy">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Remarks</label>
+            <input type="text" class="form-control form-control-sm" id="eqRemarks" placeholder="e.g. Satisfactory">
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold text-danger">Target Closeout Date (if an item is expired or missing)</label>
+            <input type="date" class="form-control form-control-sm" id="eqTarget">
+          </div>
+          <button type="submit" class="btn btn-portal-primary w-100 py-2" id="btnSubmitEquip">
+            <i class="fa-solid fa-paper-plane me-2"></i>Save Equipment Inspection
           </button>
         </form>
       </div>
@@ -726,6 +886,44 @@
         });
     }
 
+    function setInspectionType(type) {
+      const equipment = type === "equipment";
+      document.getElementById("generatorFormCard").style.display = equipment ? "none" : "block";
+      document.getElementById("equipmentFormCard").style.display = equipment ? "block" : "none";
+      document.getElementById("typeGenBtn").classList.toggle("active", !equipment);
+      document.getElementById("typeEquipBtn").classList.toggle("active", equipment);
+      if (equipment && activeUser && !document.getElementById("eqInspectedBy").value) {
+        document.getElementById("eqInspectedBy").value = activeUser.name;
+      }
+    }
+
+    function readEquipmentForm() {
+      return {
+        zone: document.getElementById("eqZone").value,
+        contractor: document.getElementById("eqContractor").value.trim(),
+        equipmentType: document.getElementById("eqType").value.trim(),
+        brand: document.getElementById("eqBrand").value.trim(),
+        plate: document.getElementById("eqPlate").value.trim(),
+        equipThirdParty: document.getElementById("eqThird").value,
+        stickerNo: document.getElementById("eqSticker").value.trim(),
+        equipIssue: document.getElementById("eqIssue").value,
+        equipExpiry: document.getElementById("eqExpiry").value,
+        operatorName: document.getElementById("eqOperator").value.trim(),
+        operatorId: document.getElementById("eqIqama").value.trim(),
+        licence: document.getElementById("eqLicence").value,
+        licenceExpiry: document.getElementById("eqLicenceExpiry").value,
+        operatorThirdParty: document.getElementById("eqOpThird").value,
+        operatorIssue: document.getElementById("eqOpIssue").value,
+        operatorExpiry: document.getElementById("eqOpExpiry").value,
+        herc: document.getElementById("eqHerc").value,
+        insurance: document.getElementById("eqInsurance").value,
+        contact: document.getElementById("eqContact").value.trim(),
+        inspectedBy: document.getElementById("eqInspectedBy").value.trim(),
+        remarks: document.getElementById("eqRemarks").value.trim(),
+        targetDate: document.getElementById("eqTarget").value
+      };
+    }
+
     function handleNewInspectionSubmit() {
       const payload = {
         zone: document.getElementById('inpZone').value,
@@ -768,6 +966,40 @@
         .catch(err => {
           btn.disabled = false;
           btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Save Inspection';
+          alert("Submission failed: " + err.toString());
+        });
+    }
+
+    function handleEquipmentSubmit() {
+      const payload = readEquipmentForm();
+      if (!payload.contractor || !payload.equipmentType || !payload.plate) {
+        alert("Contractor, equipment type, and plate / ID are required.");
+        return;
+      }
+
+      const btn = document.getElementById("btnSubmitEquip");
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+      callApi("equipment", {
+        payload: JSON.stringify(payload),
+        user: JSON.stringify(activeUser)
+      })
+        .then(res => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Save Equipment Inspection';
+          if (res.success) {
+            alert(res.message);
+            document.getElementById("equipmentForm").reset();
+            if (activeUser) document.getElementById("eqInspectedBy").value = activeUser.name;
+            switchView("pending");
+          } else {
+            alert("Error: " + res.message);
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-paper-plane me-2"></i>Save Equipment Inspection';
           alert("Submission failed: " + err.toString());
         });
     }
