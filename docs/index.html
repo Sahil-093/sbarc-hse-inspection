@@ -104,6 +104,32 @@
       color: #ffffff;
       border-color: var(--primary-color);
     }
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 12px;
+      padding: 8px 12px;
+    }
+    .search-box i { color: #64748b; }
+    .search-box input {
+      border: 0;
+      outline: none;
+      width: 100%;
+      min-width: 0;
+      font-size: 0.9rem;
+      background: transparent;
+    }
+    .search-box button {
+      border: 0;
+      background: transparent;
+      color: #64748b;
+      font-size: 1.15rem;
+      line-height: 1;
+      padding: 0 2px;
+    }
     .sub-filter-btn {
       font-size: 0.75rem;
       font-weight: 600;
@@ -289,6 +315,14 @@
             <i class="fa-solid fa-plug text-warning me-1"></i>DBs (<span id="countSubDb">0</span>)
           </button>
         </div>
+      </div>
+
+      <div class="mb-2 px-1">
+        <label class="search-box" for="inspectionSearch">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="inspectionSearch" type="search" placeholder="Search all inspections" autocomplete="off" oninput="onInspectionSearch(this.value)">
+          <button type="button" id="inspectionSearchClear" onclick="clearInspectionSearch()" hidden aria-label="Clear search">&times;</button>
+        </label>
       </div>
 
       <div class="d-flex flex-wrap gap-2 mb-2 px-1" id="statusFilterRow">
@@ -662,6 +696,7 @@
     let equipModalObj = null;
     let activeCategory = "ALL";
     let activeGeneratorSub = "ALL";
+    let searchQueries = { ALL: "", Generator: "", Equipment: "", Scaffolding: "" };
 
     document.addEventListener("DOMContentLoaded", () => {
       modalObj = new bootstrap.Modal(document.getElementById('closeoutModal'));
@@ -822,6 +857,50 @@
       renderSheetCards();
     }
 
+    function searchPlaceholder() {
+      if (activeCategory === "Generator") return "Search zone, cluster, inspector";
+      if (activeCategory === "Equipment") return "Search plate, type, operator, contractor";
+      if (activeCategory === "Scaffolding") return "Search scaffold, zone, inspector";
+      return "Search all inspections";
+    }
+
+    function syncSearchBox() {
+      const input = document.getElementById("inspectionSearch");
+      if (!input) return;
+      input.value = searchQueries[activeCategory] || "";
+      input.placeholder = searchPlaceholder();
+      document.getElementById("inspectionSearchClear").hidden = !input.value;
+    }
+
+    function onInspectionSearch(value) {
+      searchQueries[activeCategory] = value;
+      document.getElementById("inspectionSearchClear").hidden = !String(value || "").trim();
+      renderSheetCards();
+    }
+
+    function clearInspectionSearch() {
+      searchQueries[activeCategory] = "";
+      syncSearchBox();
+      renderSheetCards();
+    }
+
+    function recordSearchText(record) {
+      const parts = [];
+      if (record.category === "Equipment" || record.equipmentType) {
+        parts.push(record.equipmentType, record.brand, record.plate, record.contractor, record.operatorName, record.operatorId, record.stickerNo, record.contact, record.inspectedBy, record.remarks, record.timestamp, record.equipIssue, record.equipExpiry, record.licence, record.licenceExpiry);
+      } else {
+        parts.push(record.title, record.subtitle, record.when, record.inspector, record.notes, record.category);
+      }
+      (record.statuses || []).forEach(item => parts.push(item.label, item.value));
+      return parts.filter(Boolean).join(" ").toLowerCase();
+    }
+
+    function matchesSearch(record) {
+      const query = String(searchQueries[activeCategory] || "").trim().toLowerCase();
+      if (!query) return true;
+      return recordSearchText(record).includes(query);
+    }
+
     function setCategoryFilter(cat) {
       activeCategory = cat;
       document.getElementById('filterBtnAll').classList.toggle('active', cat === 'ALL');
@@ -829,6 +908,7 @@
       document.getElementById('filterBtnEquip').classList.toggle('active', cat === 'Equipment');
       document.getElementById('filterBtnScaff').classList.toggle('active', cat === 'Scaffolding');
       document.getElementById('generatorSubFilterBox').style.display = 'none';
+      syncSearchBox();
       updateSheetCounts();
       renderSheetCards();
     }
@@ -981,13 +1061,14 @@
       const container = document.getElementById('pendingContainer');
       const names = { ALL: "All Inspections", Generator: "Generator", Equipment: "Equipment", Scaffolding: "Scaffolding" };
       const statusNames = { all: "All Records", valid: "Valid", expired: "Expired", missing: "Not Available" };
-      document.getElementById('currentCategoryTitle').innerText = (names[activeCategory] || "Inspections") + " · " + (statusNames[statusFilter] || "All Records");
-      const rows = recordsForCategory().filter(row => matchesStatus(row, statusFilter));
+      const query = String(searchQueries[activeCategory] || "").trim();
+      const rows = recordsForCategory().filter(row => matchesStatus(row, statusFilter) && matchesSearch(row));
+      document.getElementById('currentCategoryTitle').innerText = (names[activeCategory] || "Inspections") + " · " + (statusNames[statusFilter] || "All Records") + (query ? " · " + rows.length + " found" : "");
       if (!rows.length) {
         container.innerHTML = `
           <div class="card card-custom p-4 text-center">
             <div class="fw-bold">No records</div>
-            <div class="text-muted small">Nothing in the sheet matches this filter.</div>
+            <div class="text-muted small">${query ? "Nothing matches " + escapeHtml(query) + "." : "Nothing in the sheet matches this filter."}</div>
           </div>`;
         return;
       }
