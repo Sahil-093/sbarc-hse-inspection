@@ -256,7 +256,7 @@
       <!-- MAIN CATEGORY FILTER BUTTONS -->
       <div class="d-flex flex-wrap gap-2 mb-2 px-1" id="categoryFilterRow">
         <button class="filter-btn active" id="filterBtnAll" onclick="setCategoryFilter('ALL')">
-          <i class="fa-solid fa-layer-group"></i> All <span class="badge bg-secondary rounded-pill ms-1" id="countAll">0</span>
+          <i class="fa-solid fa-layer-group"></i> All Inspections <span class="badge bg-secondary rounded-pill ms-1" id="countAll">0</span>
         </button>
         <button class="filter-btn" id="filterBtnGen" onclick="setCategoryFilter('Generator')">
           <i class="fa-solid fa-bolt text-warning"></i> Generator <span class="badge bg-light text-dark rounded-pill ms-1 border" id="countGen">0</span>
@@ -291,13 +291,15 @@
         </div>
       </div>
 
-      <div class="d-flex flex-wrap gap-2 mb-2 px-1" id="equipmentScopeRow" style="display: none;">
-        <button type="button" class="filter-btn active" id="equipScopePending" onclick="setEquipmentScope('pending')">Pending</button>
-        <button type="button" class="filter-btn" id="equipScopeAll" onclick="setEquipmentScope('all')">All records</button>
+      <div class="d-flex flex-wrap gap-2 mb-2 px-1" id="statusFilterRow">
+        <button type="button" class="filter-btn" id="statusValid" onclick="setStatusFilter('valid')">Valid <span class="badge bg-light text-dark rounded-pill ms-1 border" id="countValid">0</span></button>
+        <button type="button" class="filter-btn" id="statusExpired" onclick="setStatusFilter('expired')">Expired <span class="badge bg-light text-dark rounded-pill ms-1 border" id="countExpired">0</span></button>
+        <button type="button" class="filter-btn" id="statusMissing" onclick="setStatusFilter('missing')">Not Available <span class="badge bg-light text-dark rounded-pill ms-1 border" id="countMissing">0</span></button>
+        <button type="button" class="filter-btn active" id="statusAll" onclick="setStatusFilter('all')">All Records <span class="badge bg-light text-dark rounded-pill ms-1 border" id="countStatusAll">0</span></button>
       </div>
 
       <div class="d-flex justify-content-between align-items-center mb-2 px-1">
-        <span class="text-muted small fw-bold text-uppercase" id="currentCategoryTitle">All Open Actions</span>
+        <span class="text-muted small fw-bold text-uppercase" id="currentCategoryTitle">All Inspections</span>
         <button class="btn btn-sm btn-light border" onclick="refreshPending()">
           <i class="fa-solid fa-arrows-rotate me-1"></i> Refresh
         </button>
@@ -305,7 +307,7 @@
 
       <div id="pendingLoader" class="text-center py-5">
         <div class="spinner-border text-teal" style="color: var(--primary-color);" role="status"></div>
-        <div class="text-muted small mt-2">Loading assigned actions...</div>
+        <div class="text-muted small mt-2">Loading sheet records...</div>
       </div>
 
       <div id="pendingContainer"></div>
@@ -654,7 +656,9 @@
     let modalObj = null;
     let allFetchedActions = [];
     let equipmentRecords = [];
-    let equipmentScope = "pending";
+    let generatorRecords = [];
+    let scaffoldRecords = [];
+    let statusFilter = "all";
     let equipModalObj = null;
     let activeCategory = "ALL";
     let activeGeneratorSub = "ALL";
@@ -737,7 +741,7 @@
         document.getElementById('viewNew').style.display = "none";
         document.getElementById('tabLinkPending').classList.add('active');
         document.getElementById('tabLinkNew').classList.remove('active');
-        fetchActionItems();
+        fetchRegisters();
       } else {
         document.getElementById('viewPending').style.display = "none";
         document.getElementById('viewNew').style.display = "block";
@@ -746,120 +750,87 @@
       }
     }
 
-    function fetchActionItems() {
+    function fetchRegisters() {
       const loader = document.getElementById('pendingLoader');
       const container = document.getElementById('pendingContainer');
       loader.style.display = "block";
       container.innerHTML = "";
 
-      callApi("actions", { user: JSON.stringify(activeUser) })
-        .then(items => {
+      callApi("registers", {})
+        .then(data => {
           loader.style.display = "none";
-          allFetchedActions = items || [];
-          updateCategoryCounters();
-          if (activeCategory !== "Equipment") renderActionCards();
+          if (data && data.success === false) {
+            container.innerHTML = `<div class="alert alert-danger small">Could not load sheets: ${data.message}</div>`;
+            return;
+          }
+          equipmentRecords = (data && data.equipment) || [];
+          generatorRecords = (data && data.generator) || [];
+          scaffoldRecords = (data && data.scaffold) || [];
+          updateSheetCounts();
+          renderSheetCards();
         })
         .catch(err => {
           loader.style.display = "none";
-          if (activeCategory !== "Equipment") {
-            container.innerHTML = `<div class="alert alert-danger small">Error loading items: ${err.toString()}</div>`;
-          }
+          container.innerHTML = `<div class="alert alert-danger small">Could not load sheets: ${err.toString()}</div>`;
         });
-      if (!equipmentRecords.length) fetchEquipmentRegister(false);
     }
 
     function refreshPending() {
-      if (activeCategory === "Equipment") fetchEquipmentRegister(true);
-      else fetchActionItems();
+      fetchRegisters();
     }
 
-    function fetchEquipmentRegister(showLoader) {
-      const loader = document.getElementById('pendingLoader');
-      const container = document.getElementById('pendingContainer');
-      if (showLoader !== false && activeCategory === "Equipment") {
-        loader.style.display = "block";
-        container.innerHTML = "";
-      }
-
-      callApi("equipmentList", {})
-        .then(rows => {
-          if (activeCategory === "Equipment") loader.style.display = "none";
-          if (rows && rows.success === false) {
-            if (activeCategory === "Equipment") {
-              container.innerHTML = `<div class="alert alert-danger small">Could not load the equipment sheet: ${rows.message}</div>`;
-            }
-            return;
-          }
-          equipmentRecords = rows || [];
-          document.getElementById('countEquip').innerText = equipmentRecords.filter(row => row.pending).length;
-          if (activeCategory === "Equipment") renderEquipmentCards();
-        })
-        .catch(err => {
-          if (activeCategory === "Equipment") {
-            loader.style.display = "none";
-            container.innerHTML = `<div class="alert alert-danger small">Could not load the equipment sheet: ${err.toString()}</div>`;
-          }
-        });
+    function recordsForCategory() {
+      if (activeCategory === "Generator") return generatorRecords;
+      if (activeCategory === "Equipment") return equipmentRecords;
+      if (activeCategory === "Scaffolding") return scaffoldRecords;
+      return generatorRecords.concat(equipmentRecords, scaffoldRecords);
     }
 
-    function updateCategoryCounters() {
-      const genItems = allFetchedActions.filter(x => x.category === 'Generator');
-      const equipCount = allFetchedActions.filter(x => x.category === 'Equipment').length;
-      const scaffCount = allFetchedActions.filter(x => x.category === 'Scaffolding').length;
+    function statusValues(record) {
+      return (record.statuses || []).map(item => String(item.value || "").trim().toLowerCase());
+    }
 
-      document.getElementById('countAll').innerText = allFetchedActions.length;
-      document.getElementById('countGen').innerText = genItems.length;
-      if (!equipmentRecords.length) document.getElementById('countEquip').innerText = equipCount;
-      document.getElementById('countScaff').innerText = scaffCount;
+    function matchesStatus(record, filter) {
+      const values = statusValues(record);
+      const expired = values.includes("expired");
+      const missing = values.includes("not available") || values.includes("no");
+      const valid = values.includes("valid") && !expired && !missing;
+      if (filter === "expired") return expired;
+      if (filter === "missing") return missing;
+      if (filter === "valid") return valid;
+      return true;
+    }
 
-      // Sub-filter counts for Generator
-      document.getElementById('countSubAll').innerText = genItems.length;
-      document.getElementById('countSubDrip').innerText = genItems.filter(x => x.item.toLowerCase().includes('drip')).length;
-      document.getElementById('countSubFe').innerText = genItems.filter(x => x.item.toLowerCase().includes('fire') || x.item.toLowerCase().includes('extinguisher')).length;
-      document.getElementById('countSubDb').innerText = genItems.filter(x => x.item.toLowerCase().includes('db')).length;
-      document.getElementById('countSubGenBody').innerText = genItems.filter(x => {
-        const itm = x.item.toLowerCase();
-        return itm.includes('generator') || (!itm.includes('drip') && !itm.includes('fire') && !itm.includes('extinguisher') && !itm.includes('db'));
-      }).length;
+    function updateSheetCounts() {
+      document.getElementById('countAll').innerText = generatorRecords.length + equipmentRecords.length + scaffoldRecords.length;
+      document.getElementById('countGen').innerText = generatorRecords.length;
+      document.getElementById('countEquip').innerText = equipmentRecords.length;
+      document.getElementById('countScaff').innerText = scaffoldRecords.length;
+      const current = recordsForCategory();
+      document.getElementById('countValid').innerText = current.filter(row => matchesStatus(row, "valid")).length;
+      document.getElementById('countExpired').innerText = current.filter(row => matchesStatus(row, "expired")).length;
+      document.getElementById('countMissing').innerText = current.filter(row => matchesStatus(row, "missing")).length;
+      document.getElementById('countStatusAll').innerText = current.length;
+    }
+
+    function setStatusFilter(filter) {
+      statusFilter = filter;
+      document.getElementById('statusValid').classList.toggle('active', filter === 'valid');
+      document.getElementById('statusExpired').classList.toggle('active', filter === 'expired');
+      document.getElementById('statusMissing').classList.toggle('active', filter === 'missing');
+      document.getElementById('statusAll').classList.toggle('active', filter === 'all');
+      renderSheetCards();
     }
 
     function setCategoryFilter(cat) {
       activeCategory = cat;
-      activeGeneratorSub = "ALL"; // Reset sub filter
-      
-      // Toggle main button states
       document.getElementById('filterBtnAll').classList.toggle('active', cat === 'ALL');
       document.getElementById('filterBtnGen').classList.toggle('active', cat === 'Generator');
       document.getElementById('filterBtnEquip').classList.toggle('active', cat === 'Equipment');
       document.getElementById('filterBtnScaff').classList.toggle('active', cat === 'Scaffolding');
-
-      // Show / Hide Generator Sub-Category Box
-      const subBox = document.getElementById('generatorSubFilterBox');
-      const equipScope = document.getElementById('equipmentScopeRow');
-      if (cat === 'Generator') {
-        subBox.style.display = 'block';
-        resetSubButtonsUI();
-      } else {
-        subBox.style.display = 'none';
-      }
-      equipScope.style.display = cat === 'Equipment' ? 'flex' : 'none';
-
-      document.getElementById('currentCategoryTitle').innerText = cat === 'ALL'
-        ? 'All Open Actions'
-        : (cat === 'Equipment' ? (equipmentScope === 'pending' ? 'Equipment Pending' : 'All Equipment Records') : cat + ' Pending Actions');
-      if (cat === "Equipment") {
-        if (equipmentRecords.length) renderEquipmentCards();
-        else fetchEquipmentRegister(true);
-      } else {
-        renderActionCards();
-      }
-    }
-
-    function setEquipmentScope(scope) {
-      equipmentScope = scope;
-      document.getElementById('equipScopePending').classList.toggle('active', scope === 'pending');
-      document.getElementById('equipScopeAll').classList.toggle('active', scope === 'all');
-      renderEquipmentCards();
+      document.getElementById('generatorSubFilterBox').style.display = 'none';
+      updateSheetCounts();
+      renderSheetCards();
     }
 
     function setSelectValue(id, value) {
@@ -939,7 +910,7 @@
           btn.innerText = "Save update";
           if (res && res.success) {
             equipModalObj.hide();
-            fetchEquipmentRegister(true);
+            fetchRegisters();
           } else {
             alert("Error: " + ((res && res.message) || "Update failed"));
           }
@@ -1006,51 +977,66 @@
       return `<div class="equip-line"><span>${label}</span><span class="${statusClass(value)}">${escapeHtml(shown)}</span></div>`;
     }
 
-    function renderEquipmentCards() {
+    function renderSheetCards() {
       const container = document.getElementById('pendingContainer');
-      const pendingOnly = equipmentScope !== "all";
-      const rows = pendingOnly ? equipmentRecords.filter(row => row.pending) : equipmentRecords;
-      document.getElementById('currentCategoryTitle').innerText = pendingOnly ? "Equipment Pending" : "All Equipment Records";
+      const names = { ALL: "All Inspections", Generator: "Generator", Equipment: "Equipment", Scaffolding: "Scaffolding" };
+      const statusNames = { all: "All Records", valid: "Valid", expired: "Expired", missing: "Not Available" };
+      document.getElementById('currentCategoryTitle').innerText = (names[activeCategory] || "Inspections") + " · " + (statusNames[statusFilter] || "All Records");
+      const rows = recordsForCategory().filter(row => matchesStatus(row, statusFilter));
       if (!rows.length) {
         container.innerHTML = `
           <div class="card card-custom p-4 text-center">
-            <div class="fw-bold">${pendingOnly ? "No pending equipment" : "No equipment records"}</div>
-            <div class="text-muted small">${pendingOnly ? "Nothing is expired or missing right now." : "The equipment sheet did not return any rows."}</div>
+            <div class="fw-bold">No records</div>
+            <div class="text-muted small">Nothing in the sheet matches this filter.</div>
           </div>`;
         return;
       }
 
       let html = "";
       rows.forEach(row => {
-        const title = row.equipmentType || "Equipment";
-        const brandPlate = [row.brand, row.plate].filter(Boolean).join(" · ");
+        if (row.category === "Equipment" || row.equipmentType) {
+          const title = row.equipmentType || "Equipment";
+          const brandPlate = [row.brand, row.plate].filter(Boolean).join(" · ");
+          const chips = (row.statuses || []).filter(item => chipMatches(item.value, statusFilter)).map(item => statusChip(item.label, item.value)).join("");
+          html += `
+            <div class="card card-custom card-task p-3 mb-2">
+              <div class="task-top">
+                <div class="task-id"><span class="fw-bold text-dark">${escapeHtml(title)}</span><span class="badge-cat">Equipment</span></div>
+                <span class="text-muted small">${escapeHtml(row.timestamp || "")}</span>
+              </div>
+              <div class="task-title">${escapeHtml(brandPlate || row.plate || "")}</div>
+              <div class="task-place">${escapeHtml(row.contractor || "")}</div>
+              <div class="equip-line"><span>Operator</span><strong>${escapeHtml(row.operatorName || "—")}</strong></div>
+              ${chips}
+              <div class="task-foot">
+                <span class="text-muted small">${escapeHtml(row.inspectedBy || "")}${row.remarks ? " · " + escapeHtml(row.remarks) : ""}</span>
+                <button type="button" class="btn btn-sm btn-portal-primary py-1 px-3" onclick="openEquipmentUpdate(${Number(row.sheetRow)})">Update</button>
+              </div>
+            </div>`;
+          return;
+        }
+        const chips = (row.statuses || []).filter(item => chipMatches(item.value, statusFilter)).map(item => statusChip(item.label, item.value)).join("");
         html += `
           <div class="card card-custom card-task p-3 mb-2">
             <div class="task-top">
-              <div class="task-id">
-                <span class="fw-bold text-dark">${escapeHtml(title)}</span>
-              </div>
-              <span class="text-muted small">${escapeHtml(row.timestamp)}</span>
+              <div class="task-id"><span class="fw-bold text-dark">${escapeHtml(row.title || row.category)}</span><span class="badge-cat">${escapeHtml(row.category || "")}</span></div>
+              <span class="text-muted small">${escapeHtml(row.when || "")}</span>
             </div>
-            <div class="task-title">${escapeHtml(brandPlate || row.plate || "")}</div>
-            <div class="task-place">${escapeHtml(row.contractor)}</div>
-            <div class="equip-line"><span>Operator</span><strong>${escapeHtml(row.operatorName || "—")}</strong></div>
-            <div class="equip-line"><span>Iqama / ID</span><strong>${escapeHtml(row.operatorId || "—")}</strong></div>
-            ${statusChip("Equipment 3rd party", row.equipThirdParty)}
-            <div class="equip-line"><span>Issue / Expiry</span><strong>${escapeHtml(row.equipIssue || "—")} · ${escapeHtml(row.equipExpiry || "—")}</strong></div>
-            ${statusChip("Licence", row.licence)}
-            <div class="equip-line"><span>Licence expiry</span><strong>${escapeHtml(row.licenceExpiry || "—")}</strong></div>
-            ${statusChip("Operator 3rd party", row.operatorThirdParty)}
-            <div class="equip-line"><span>Issue / Expiry</span><strong>${escapeHtml(row.operatorIssue || "—")} · ${escapeHtml(row.operatorExpiry || "—")}</strong></div>
-            ${statusChip("Insurance", row.insurance)}
-            ${statusChip("HERC", row.herc)}
-            <div class="task-foot">
-              <span class="text-muted small">${escapeHtml(row.inspectedBy || "")}${row.remarks ? " · " + escapeHtml(row.remarks) : ""}</span>
-              <button type="button" class="btn btn-sm btn-portal-primary py-1 px-3" onclick="openEquipmentUpdate(${Number(row.sheetRow)})">Update</button>
-            </div>
+            <div class="task-place">${escapeHtml(row.subtitle || "")}</div>
+            ${chips}
+            ${row.notes ? `<div class="small text-muted mt-2">${escapeHtml(row.notes)}</div>` : ""}
+            ${row.inspector ? `<div class="task-foot"><span class="text-muted small">${escapeHtml(row.inspector)}</span></div>` : ""}
           </div>`;
       });
       container.innerHTML = html;
+    }
+
+    function chipMatches(value, filter) {
+      const text = String(value || "").trim().toLowerCase();
+      if (filter === "expired") return text === "expired";
+      if (filter === "missing") return text === "not available" || text === "no";
+      if (filter === "valid") return text === "valid";
+      return true;
     }
 
     function renderActionCards() {
@@ -1157,7 +1143,7 @@
           btn.innerHTML = '<i class="fa-solid fa-check me-1"></i> Submit Verification';
           modalObj.hide();
           if (res.success) {
-            fetchActionItems();
+            fetchRegisters();
           } else {
             alert("Error: " + res.message);
           }

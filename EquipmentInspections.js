@@ -123,7 +123,15 @@ function getEquipmentRegister() {
         insurance: insurance,
         contact: String(row[19] || "").trim(),
         inspectedBy: String(row[20] || "").trim(),
-        remarks: String(row[21] || "").trim()
+        remarks: String(row[21] || "").trim(),
+        category: "Equipment",
+        statuses: [
+          { label: "Equipment 3rd party", value: equipThirdParty },
+          { label: "Licence", value: licence },
+          { label: "Operator 3rd party", value: operatorThirdParty },
+          { label: "Insurance", value: insurance },
+          { label: "HERC", value: herc }
+        ]
       });
     }
     records.reverse();

@@ -33,6 +33,14 @@ function apiResponse_(params) {
       result = recordEquipmentInspection(payload, user);
     } else if (params.action === "equipmentList") {
       result = getEquipmentRegister();
+    } else if (params.action === "registers") {
+      const equipment = getEquipmentRegister();
+      const generator = getGeneratorRegister();
+      const scaffold = getScaffoldRegister();
+      if (equipment && equipment.success === false) result = equipment;
+      else if (generator && generator.success === false) result = generator;
+      else if (scaffold && scaffold.success === false) result = scaffold;
+      else result = { equipment: equipment, generator: generator, scaffold: scaffold };
     } else if (params.action === "equipmentUpdate") {
       result = updateEquipmentRecord(payload, user);
     } else {
