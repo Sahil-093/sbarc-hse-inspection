@@ -616,48 +616,36 @@
             </div>
             <div class="col-6">
               <label class="form-label small fw-semibold">ID Number</label>
-              <input type="text" class="form-control form-control-sm" id="indId" required>
+              <input type="text" class="form-control form-control-sm" id="indId">
             </div>
           </div>
           <div class="row g-2 mb-2">
             <div class="col-6">
-              <label class="form-label small fw-semibold">Company</label>
+              <label class="form-label small fw-semibold">Sticker No.</label>
+              <input type="text" class="form-control form-control-sm" id="indSticker">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Position / Designation</label>
+              <input type="text" class="form-control form-control-sm" id="indPosition">
+            </div>
+          </div>
+          <div class="mb-2">
+            <label class="form-label small fw-semibold">Induction Date</label>
+            <input type="date" class="form-control form-control-sm" id="indDate" required>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Company / Subcontractor</label>
               <input type="text" class="form-control form-control-sm" id="indCompany">
             </div>
             <div class="col-6">
-              <label class="form-label small fw-semibold">Trade</label>
-              <input type="text" class="form-control form-control-sm" id="indTrade">
-            </div>
-          </div>
-          <div class="row g-2 mb-2">
-            <div class="col-6">
-              <label class="form-label small fw-semibold">Induction Date</label>
-              <input type="date" class="form-control form-control-sm" id="indDate" required>
-            </div>
-            <div class="col-6">
-              <label class="form-label small fw-semibold">Expiry Date</label>
-              <input type="date" class="form-control form-control-sm" id="indExpiry">
-            </div>
-          </div>
-          <div class="row g-2 mb-2">
-            <div class="col-6">
-              <label class="form-label small fw-semibold">Zone</label>
-              <select class="form-select form-select-sm" id="indZone">
-                <option value="Zone A">Zone A</option>
-                <option value="Zone B">Zone B</option>
-                <option value="Zone D">Zone D</option>
-                <option value="Zone E">Zone E</option>
-                <option value="Zone F">Zone F</option>
-              </select>
-            </div>
-            <div class="col-6">
-              <label class="form-label small fw-semibold">Inducted By</label>
+              <label class="form-label small fw-semibold">HSE Trainer</label>
               <input type="text" class="form-control form-control-sm" id="indBy">
             </div>
           </div>
           <div class="mb-3">
-            <label class="form-label small fw-semibold">Remarks</label>
-            <input type="text" class="form-control form-control-sm" id="indRemarks">
+            <label class="form-label small fw-semibold">Notes</label>
+            <input type="text" class="form-control form-control-sm" id="indNotes">
           </div>
           <div class="d-flex gap-2">
             <button type="button" class="btn btn-light border flex-grow-1" onclick="toggleInductionForm(false)">Cancel</button>
@@ -942,21 +930,17 @@
           </div>`;
         return;
       }
-      box.innerHTML = records.map(row => {
-        const status = row.status ? `<span class="${statusClass(row.status)}">${escapeHtml(row.status)}</span>` : "";
-        return `
+      box.innerHTML = records.map(row => `
           <div class="card card-custom card-task p-3 mb-2">
             <div class="task-top">
-              <div class="task-id"><span class="fw-bold text-dark">${escapeHtml(row.name || "Employee")}</span><span class="badge-cat">${escapeHtml(row.idNumber || "")}</span>${status}</div>
+              <div class="task-id"><span class="fw-bold text-dark">${escapeHtml(row.name || "Employee")}</span>${row.idNumber ? `<span class="badge-cat">${escapeHtml(row.idNumber)}</span>` : ""}</div>
             </div>
-            <div class="task-place">${escapeHtml([row.company, row.trade].filter(Boolean).join(" · "))}</div>
-            <div class="equip-line"><span>Induction</span><strong>${escapeHtml(row.inductionDate || "—")}</strong></div>
-            <div class="equip-line"><span>Expiry</span><strong>${escapeHtml(row.expiryDate || "—")}</strong></div>
-            <div class="equip-line"><span>Zone</span><strong>${escapeHtml(row.zone || "—")}</strong></div>
-            ${row.remarks ? `<div class="small text-muted mt-2">${escapeHtml(row.remarks)}</div>` : ""}
-            <div class="task-foot"><span class="text-muted small">${escapeHtml(row.inductedBy || "")}${row.when ? " · " + escapeHtml(row.when) : ""}</span></div>
-          </div>`;
-      }).join("");
+            <div class="task-place">${escapeHtml([row.company, row.position].filter(Boolean).join(" · "))}</div>
+            <div class="equip-line"><span>Date</span><strong>${escapeHtml(row.inductionDate || "—")}</strong></div>
+            ${row.sticker ? `<div class="equip-line"><span>Sticker</span><strong>${escapeHtml(row.sticker)}</strong></div>` : ""}
+            ${row.notes ? `<div class="small text-muted mt-2">${escapeHtml(row.notes)}</div>` : ""}
+            <div class="task-foot"><span class="text-muted small">${escapeHtml(row.trainer || "")}</span></div>
+          </div>`).join("");
     }
 
     function toggleInductionForm(forceOpen) {
@@ -975,16 +959,15 @@
       const payload = {
         name: document.getElementById('indName').value.trim(),
         idNumber: document.getElementById('indId').value.trim(),
-        company: document.getElementById('indCompany').value.trim(),
-        trade: document.getElementById('indTrade').value.trim(),
+        sticker: document.getElementById('indSticker').value.trim(),
+        position: document.getElementById('indPosition').value.trim(),
         inductionDate: document.getElementById('indDate').value,
-        expiryDate: document.getElementById('indExpiry').value,
-        zone: document.getElementById('indZone').value,
-        inductedBy: document.getElementById('indBy').value.trim(),
-        remarks: document.getElementById('indRemarks').value.trim()
+        company: document.getElementById('indCompany').value.trim(),
+        trainer: document.getElementById('indBy').value.trim(),
+        notes: document.getElementById('indNotes').value.trim()
       };
-      if (!payload.name || !payload.idNumber) {
-        alert("Employee name and ID number are required.");
+      if (!payload.name) {
+        alert("Employee name is required.");
         return;
       }
       const btn = document.getElementById('btnSaveInduction');
@@ -997,8 +980,9 @@
           if (res && res.success) {
             document.getElementById('inductionForm').reset();
             toggleInductionForm(false);
-            document.getElementById('inductionSearch').value = payload.idNumber;
-            searchInduction(payload.idNumber);
+            const lookup = payload.idNumber || payload.name;
+            document.getElementById('inductionSearch').value = lookup;
+            searchInduction(lookup);
           } else {
             alert("Error: " + ((res && res.message) || "Could not save"));
           }
