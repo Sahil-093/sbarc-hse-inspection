@@ -213,8 +213,8 @@
         flex-direction: column;
       }
       .nav-pills .nav-link {
-        font-size: 0.82rem;
-        padding: 0.45rem 0.35rem;
+        font-size: 0.72rem;
+        padding: 0.45rem 0.2rem;
       }
       .filter-btn {
         font-size: 0.75rem;
@@ -273,6 +273,11 @@
       <li class="nav-item">
         <a class="nav-link" id="tabLinkNew" href="#" onclick="switchView('new')">
           <i class="fa-solid fa-circle-plus me-1"></i> New Inspection
+        </a>
+      </li>
+      <li class="nav-item">
+        <a class="nav-link" id="tabLinkInduction" href="#" onclick="switchView('induction')">
+          <i class="fa-solid fa-id-card me-1"></i> Induction
         </a>
       </li>
     </ul>
@@ -588,6 +593,81 @@
         </form>
       </div>
     </div>
+
+    <!-- VIEW C: INDUCTION LOG -->
+    <div id="viewInduction" style="display: none;">
+      <div class="d-flex gap-2 mb-3 align-items-stretch">
+        <label class="search-box flex-grow-1" for="inductionSearch">
+          <i class="fa-solid fa-magnifying-glass"></i>
+          <input id="inductionSearch" type="search" placeholder="Employee name or ID number" autocomplete="off" oninput="onInductionSearch(this.value)">
+        </label>
+        <button type="button" class="btn btn-portal-primary px-3" id="btnNewInduction" onclick="toggleInductionForm()">New+</button>
+      </div>
+
+      <div class="card card-custom p-3 mb-3" id="inductionFormCard" style="display: none;">
+        <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
+          <i class="fa-solid fa-id-card me-2"></i>New Induction
+        </h6>
+        <form id="inductionForm" onsubmit="event.preventDefault(); saveInduction();">
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Employee Name</label>
+              <input type="text" class="form-control form-control-sm" id="indName" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">ID Number</label>
+              <input type="text" class="form-control form-control-sm" id="indId" required>
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Company</label>
+              <input type="text" class="form-control form-control-sm" id="indCompany">
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Trade</label>
+              <input type="text" class="form-control form-control-sm" id="indTrade">
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Induction Date</label>
+              <input type="date" class="form-control form-control-sm" id="indDate" required>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Expiry Date</label>
+              <input type="date" class="form-control form-control-sm" id="indExpiry">
+            </div>
+          </div>
+          <div class="row g-2 mb-2">
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Zone</label>
+              <select class="form-select form-select-sm" id="indZone">
+                <option value="Zone A">Zone A</option>
+                <option value="Zone B">Zone B</option>
+                <option value="Zone D">Zone D</option>
+                <option value="Zone E">Zone E</option>
+                <option value="Zone F">Zone F</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label small fw-semibold">Inducted By</label>
+              <input type="text" class="form-control form-control-sm" id="indBy">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label small fw-semibold">Remarks</label>
+            <input type="text" class="form-control form-control-sm" id="indRemarks">
+          </div>
+          <div class="d-flex gap-2">
+            <button type="button" class="btn btn-light border flex-grow-1" onclick="toggleInductionForm(false)">Cancel</button>
+            <button type="submit" class="btn btn-portal-primary flex-grow-1" id="btnSaveInduction">Save</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="inductionResults"></div>
+    </div>
   </div>
 
   <!-- ==================== GENERATOR STATUS UPDATE ==================== -->
@@ -804,18 +884,130 @@
     }
 
     function switchView(viewName) {
-      if (viewName === 'pending') {
-        document.getElementById('viewPending').style.display = "block";
-        document.getElementById('viewNew').style.display = "none";
-        document.getElementById('tabLinkPending').classList.add('active');
-        document.getElementById('tabLinkNew').classList.remove('active');
-        fetchRegisters();
-      } else {
-        document.getElementById('viewPending').style.display = "none";
-        document.getElementById('viewNew').style.display = "block";
-        document.getElementById('tabLinkNew').classList.add('active');
-        document.getElementById('tabLinkPending').classList.remove('active');
+      document.getElementById('viewPending').style.display = viewName === 'pending' ? 'block' : 'none';
+      document.getElementById('viewNew').style.display = viewName === 'new' ? 'block' : 'none';
+      document.getElementById('viewInduction').style.display = viewName === 'induction' ? 'block' : 'none';
+      document.getElementById('tabLinkPending').classList.toggle('active', viewName === 'pending');
+      document.getElementById('tabLinkNew').classList.toggle('active', viewName === 'new');
+      document.getElementById('tabLinkInduction').classList.toggle('active', viewName === 'induction');
+      if (viewName === 'pending') fetchRegisters();
+      if (viewName === 'induction') showInductionPrompt();
+    }
+
+    let inductionTimer = null;
+
+    function showInductionPrompt() {
+      const query = document.getElementById('inductionSearch').value.trim();
+      if (query.length >= 2) searchInduction(query);
+      else document.getElementById('inductionResults').innerHTML = `
+        <div class="card card-custom p-4 text-center">
+          <div class="fw-bold">Induction Log</div>
+          <div class="text-muted small">Enter an employee name or ID number.</div>
+        </div>`;
+    }
+
+    function onInductionSearch(value) {
+      clearTimeout(inductionTimer);
+      inductionTimer = setTimeout(function () { searchInduction(value); }, 300);
+    }
+
+    function searchInduction(value) {
+      const query = String(value || "").trim();
+      const box = document.getElementById('inductionResults');
+      if (query.length < 2) {
+        showInductionPrompt();
+        return;
       }
+      box.innerHTML = `<div class="text-center py-4"><div class="spinner-border spinner-border-sm" style="color: var(--primary-color);"></div></div>`;
+      callApi("inductionSearch", { q: query })
+        .then(data => {
+          if (data && data.success === false) {
+            box.innerHTML = `<div class="alert alert-danger small">${escapeHtml(data.message)}</div>`;
+            return;
+          }
+          renderInductionCards((data && data.records) || [], query);
+        })
+        .catch(err => {
+          box.innerHTML = `<div class="alert alert-danger small">Could not search: ${escapeHtml(err.toString())}</div>`;
+        });
+    }
+
+    function renderInductionCards(records, query) {
+      const box = document.getElementById('inductionResults');
+      if (!records.length) {
+        box.innerHTML = `
+          <div class="card card-custom p-4 text-center">
+            <div class="fw-bold">No induction found</div>
+            <div class="text-muted small">Nothing matches ${escapeHtml(query)}.</div>
+          </div>`;
+        return;
+      }
+      box.innerHTML = records.map(row => {
+        const status = row.status ? `<span class="${statusClass(row.status)}">${escapeHtml(row.status)}</span>` : "";
+        return `
+          <div class="card card-custom card-task p-3 mb-2">
+            <div class="task-top">
+              <div class="task-id"><span class="fw-bold text-dark">${escapeHtml(row.name || "Employee")}</span><span class="badge-cat">${escapeHtml(row.idNumber || "")}</span>${status}</div>
+            </div>
+            <div class="task-place">${escapeHtml([row.company, row.trade].filter(Boolean).join(" · "))}</div>
+            <div class="equip-line"><span>Induction</span><strong>${escapeHtml(row.inductionDate || "—")}</strong></div>
+            <div class="equip-line"><span>Expiry</span><strong>${escapeHtml(row.expiryDate || "—")}</strong></div>
+            <div class="equip-line"><span>Zone</span><strong>${escapeHtml(row.zone || "—")}</strong></div>
+            ${row.remarks ? `<div class="small text-muted mt-2">${escapeHtml(row.remarks)}</div>` : ""}
+            <div class="task-foot"><span class="text-muted small">${escapeHtml(row.inductedBy || "")}${row.when ? " · " + escapeHtml(row.when) : ""}</span></div>
+          </div>`;
+      }).join("");
+    }
+
+    function toggleInductionForm(forceOpen) {
+      const card = document.getElementById('inductionFormCard');
+      const open = typeof forceOpen === "boolean" ? forceOpen : card.style.display === "none";
+      card.style.display = open ? "block" : "none";
+      if (open) {
+        const today = new Date();
+        const iso = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
+        if (!document.getElementById('indDate').value) document.getElementById('indDate').value = iso;
+        if (activeUser && !document.getElementById('indBy').value) document.getElementById('indBy').value = activeUser.name;
+      }
+    }
+
+    function saveInduction() {
+      const payload = {
+        name: document.getElementById('indName').value.trim(),
+        idNumber: document.getElementById('indId').value.trim(),
+        company: document.getElementById('indCompany').value.trim(),
+        trade: document.getElementById('indTrade').value.trim(),
+        inductionDate: document.getElementById('indDate').value,
+        expiryDate: document.getElementById('indExpiry').value,
+        zone: document.getElementById('indZone').value,
+        inductedBy: document.getElementById('indBy').value.trim(),
+        remarks: document.getElementById('indRemarks').value.trim()
+      };
+      if (!payload.name || !payload.idNumber) {
+        alert("Employee name and ID number are required.");
+        return;
+      }
+      const btn = document.getElementById('btnSaveInduction');
+      btn.disabled = true;
+      btn.innerText = "Saving...";
+      callApi("induction", { payload: JSON.stringify(payload), user: JSON.stringify(activeUser) })
+        .then(res => {
+          btn.disabled = false;
+          btn.innerText = "Save";
+          if (res && res.success) {
+            document.getElementById('inductionForm').reset();
+            toggleInductionForm(false);
+            document.getElementById('inductionSearch').value = payload.idNumber;
+            searchInduction(payload.idNumber);
+          } else {
+            alert("Error: " + ((res && res.message) || "Could not save"));
+          }
+        })
+        .catch(err => {
+          btn.disabled = false;
+          btn.innerText = "Save";
+          alert("Could not save: " + err.toString());
+        });
     }
 
     function fetchRegisters() {

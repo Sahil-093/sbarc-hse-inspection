@@ -45,6 +45,10 @@ function apiResponse_(params) {
       result = updateEquipmentRecord(payload, user);
     } else if (params.action === "generatorUpdate") {
       result = updateGeneratorRecord(payload, user);
+    } else if (params.action === "inductionSearch") {
+      result = { records: searchInductionLog(params.q || "") };
+    } else if (params.action === "induction") {
+      result = recordInduction(payload, user);
     } else {
       result = { success: false, message: "Unknown action." };
     }
