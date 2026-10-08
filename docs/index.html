@@ -601,14 +601,17 @@
           <i class="fa-solid fa-magnifying-glass"></i>
           <input id="inductionSearch" type="search" placeholder="Employee name or ID number" autocomplete="off" oninput="onInductionSearch(this.value)">
         </label>
-        <button type="button" class="btn btn-portal-primary px-3" id="btnNewInduction" onclick="toggleInductionForm()">New+</button>
+        <button type="button" class="btn btn-portal-primary px-3" id="btnNewInduction" onclick="startNewInduction()">New+</button>
       </div>
 
       <div class="card card-custom p-3 mb-3" id="inductionFormCard" style="display: none;">
         <h6 class="fw-bold text-dark border-bottom pb-2 mb-3">
-          <i class="fa-solid fa-id-card me-2"></i>New Induction
+          <i class="fa-solid fa-id-card me-2"></i><span id="indFormTitle">New Induction</span>
         </h6>
         <form id="inductionForm" onsubmit="event.preventDefault(); saveInduction();">
+          <input type="hidden" id="indSheetRow">
+          <input type="hidden" id="indOriginalName">
+          <input type="hidden" id="indOriginalId">
           <div class="row g-2 mb-2">
             <div class="col-6">
               <label class="form-label small fw-semibold">Employee Name</label>
@@ -883,6 +886,7 @@
     }
 
     let inductionTimer = null;
+    let inductionRecords = [];
 
     function showInductionPrompt() {
       const query = document.getElementById('inductionSearch').value.trim();
@@ -913,7 +917,8 @@
             box.innerHTML = `<div class="alert alert-danger small">${escapeHtml(data.message)}</div>`;
             return;
           }
-          renderInductionCards((data && data.records) || [], query);
+          inductionRecords = (data && data.records) || [];
+          renderInductionCards(inductionRecords, query);
         })
         .catch(err => {
           box.innerHTML = `<div class="alert alert-danger small">Could not search: ${escapeHtml(err.toString())}</div>`;
@@ -939,15 +944,50 @@
             <div class="equip-line"><span>Date</span><strong>${escapeHtml(row.inductionDate || "—")}</strong></div>
             ${row.sticker ? `<div class="equip-line"><span>Sticker</span><strong>${escapeHtml(row.sticker)}</strong></div>` : ""}
             ${row.notes ? `<div class="small text-muted mt-2">${escapeHtml(row.notes)}</div>` : ""}
-            <div class="task-foot"><span class="text-muted small">${escapeHtml(row.trainer || "")}</span></div>
+            <div class="task-foot">
+              <span class="text-muted small">${escapeHtml(row.trainer || "")}</span>
+              <button type="button" class="btn btn-sm btn-portal-primary py-1 px-3" onclick="openInductionUpdate(${Number(row.sheetRow)})">Update</button>
+            </div>
           </div>`).join("");
+    }
+
+    function setInductionMode(editing) {
+      document.getElementById('indFormTitle').innerText = editing ? "Update Induction" : "New Induction";
+      document.getElementById('btnSaveInduction').innerText = editing ? "Save update" : "Save";
+    }
+
+    function startNewInduction() {
+      document.getElementById('inductionForm').reset();
+      document.getElementById('indSheetRow').value = "";
+      setInductionMode(false);
+      toggleInductionForm(true);
+    }
+
+    function openInductionUpdate(sheetRow) {
+      const row = inductionRecords.find(item => item.sheetRow === sheetRow);
+      if (!row) return;
+      document.getElementById('indSheetRow').value = row.sheetRow;
+      document.getElementById('indOriginalName').value = row.name || "";
+      document.getElementById('indOriginalId').value = row.idNumber || "";
+      document.getElementById('indName').value = row.name || "";
+      document.getElementById('indId').value = row.idNumber || "";
+      document.getElementById('indSticker').value = row.sticker || "";
+      document.getElementById('indPosition').value = row.position || "";
+      document.getElementById('indDate').value = row.dateIso || "";
+      document.getElementById('indCompany').value = row.company || "";
+      document.getElementById('indBy').value = row.trainer || "";
+      document.getElementById('indNotes').value = row.notes || "";
+      setInductionMode(true);
+      toggleInductionForm(true);
+      document.getElementById('inductionFormCard').scrollIntoView({ block: "start" });
     }
 
     function toggleInductionForm(forceOpen) {
       const card = document.getElementById('inductionFormCard');
       const open = typeof forceOpen === "boolean" ? forceOpen : card.style.display === "none";
       card.style.display = open ? "block" : "none";
-      if (open) {
+      const editing = document.getElementById('indSheetRow').value;
+      if (open && !editing) {
         const today = new Date();
         const iso = today.getFullYear() + "-" + String(today.getMonth() + 1).padStart(2, "0") + "-" + String(today.getDate()).padStart(2, "0");
         if (!document.getElementById('indDate').value) document.getElementById('indDate').value = iso;
@@ -964,32 +1004,38 @@
         inductionDate: document.getElementById('indDate').value,
         company: document.getElementById('indCompany').value.trim(),
         trainer: document.getElementById('indBy').value.trim(),
-        notes: document.getElementById('indNotes').value.trim()
+        notes: document.getElementById('indNotes').value.trim(),
+        sheetRow: document.getElementById('indSheetRow').value,
+        originalName: document.getElementById('indOriginalName').value,
+        originalId: document.getElementById('indOriginalId').value
       };
       if (!payload.name) {
         alert("Employee name is required.");
         return;
       }
+      const editing = Boolean(payload.sheetRow);
       const btn = document.getElementById('btnSaveInduction');
       btn.disabled = true;
       btn.innerText = "Saving...";
-      callApi("induction", { payload: JSON.stringify(payload), user: JSON.stringify(activeUser) })
+      callApi(editing ? "inductionUpdate" : "induction", { payload: JSON.stringify(payload), user: JSON.stringify(activeUser) })
         .then(res => {
           btn.disabled = false;
-          btn.innerText = "Save";
           if (res && res.success) {
             document.getElementById('inductionForm').reset();
+            document.getElementById('indSheetRow').value = "";
+            setInductionMode(false);
             toggleInductionForm(false);
             const lookup = payload.idNumber || payload.name;
             document.getElementById('inductionSearch').value = lookup;
             searchInduction(lookup);
           } else {
+            setInductionMode(editing);
             alert("Error: " + ((res && res.message) || "Could not save"));
           }
         })
         .catch(err => {
           btn.disabled = false;
-          btn.innerText = "Save";
+          setInductionMode(editing);
           alert("Could not save: " + err.toString());
         });
     }

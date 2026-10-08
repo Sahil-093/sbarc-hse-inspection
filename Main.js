@@ -49,6 +49,8 @@ function apiResponse_(params) {
       result = { records: searchInductionLog(params.q || "") };
     } else if (params.action === "induction") {
       result = recordInduction(payload, user);
+    } else if (params.action === "inductionUpdate") {
+      result = updateInductionRecord(payload);
     } else {
       result = { success: false, message: "Unknown action." };
     }

@@ -48,6 +48,20 @@ function inductionDateText_(row) {
   return [day, month, year].filter(Boolean).join(" ");
 }
 
+function inductionIso_(row) {
+  const day = parseInt(row[5], 10);
+  const monthRaw = String(row[6] || "").trim().toLowerCase();
+  const year = parseInt(row[7], 10);
+  const full = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+  let month = full.indexOf(monthRaw);
+  if (month < 0 && monthRaw.length >= 3) {
+    const short = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+    month = short.indexOf(monthRaw.slice(0, 3));
+  }
+  if (!day || month < 0 || !year) return "";
+  return year + "-" + ("0" + (month + 1)).slice(-2) + "-" + ("0" + day).slice(-2);
+}
+
 function inductionRecord_(row, sheetRow) {
   return {
     sheetRow: sheetRow,
@@ -57,10 +71,28 @@ function inductionRecord_(row, sheetRow) {
     idNumber: inductionIdText_(row[3]),
     position: String(row[4] || "").trim(),
     inductionDate: inductionDateText_(row),
+    dateIso: inductionIso_(row),
     company: String(row[8] || "").trim(),
     trainer: String(row[9] || "").trim(),
     notes: String(row[10] || "").trim()
   };
+}
+
+function inductionDateParts_(iso) {
+  const parts = String(iso || "").split("-");
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  if (parts.length !== 3 || parts[0].length !== 4) return null;
+  const month = months[Number(parts[1]) - 1];
+  if (!month) return null;
+  return { day: Number(parts[2]), month: month, year: Number(parts[0]) };
+}
+
+function inductionWriteError_(err) {
+  const message = String(err);
+  if (/permission|access/i.test(message)) {
+    return { success: false, message: "Cannot write the induction sheet. Share it with sahilkhattak093@gmail.com as Editor." };
+  }
+  return { success: false, message: message };
 }
 
 function searchInductionLog(query) {
@@ -93,11 +125,7 @@ function recordInduction(formData, user) {
     const sheet = inductionTab_(ss);
     if (!sheet) return { success: false, message: "Induction sheet tab was not found." };
 
-    const parts = String(formData.inductionDate || "").split("-");
-    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const day = parts.length === 3 ? Number(parts[2]) : "";
-    const month = parts.length === 3 ? months[Number(parts[1]) - 1] || "" : "";
-    const year = parts.length === 3 ? Number(parts[0]) : "";
+    const date = inductionDateParts_(formData.inductionDate) || { day: "", month: "", year: "" };
 
     const rows = sheet.getDataRange().getValues();
     let serial = 0;
@@ -112,9 +140,9 @@ function recordInduction(formData, user) {
       formData.sticker || "",
       idNumber,
       formData.position || "",
-      day,
-      month,
-      year,
+      date.day,
+      date.month,
+      date.year,
       formData.company || "",
       formData.trainer || (user && user.name) || "",
       formData.notes || ""
@@ -123,10 +151,45 @@ function recordInduction(formData, user) {
     if (idNumber) sheet.getRange(last, 4).setNumberFormat("@").setValue(idNumber);
     return { success: true, message: "Induction saved." };
   } catch (err) {
-    const message = String(err);
-    if (/permission|access/i.test(message)) {
-      return { success: false, message: "Cannot write the induction sheet. Share it with sahilkhattak093@gmail.com as Editor." };
+    return inductionWriteError_(err);
+  }
+}
+
+function updateInductionRecord(formData) {
+  try {
+    const row = parseInt(formData.sheetRow, 10);
+    const name = String(formData.name || "").trim();
+    if (!row || row < 3) return { success: false, message: "Invalid induction row." };
+    if (!name) return { success: false, message: "Employee name is required." };
+
+    const ss = SpreadsheetApp.openById(INDUCTION_SPREADSHEET_ID);
+    const sheet = inductionTab_(ss);
+    if (!sheet) return { success: false, message: "Induction sheet tab was not found." };
+
+    const currentName = String(sheet.getRange(row, 2).getValue() || "").trim();
+    const currentId = inductionIdText_(sheet.getRange(row, 4).getValue());
+    const sameRow = currentName === String(formData.originalName || "").trim() &&
+      currentId === inductionIdText_(formData.originalId);
+    if (!sameRow) {
+      return { success: false, message: "This row changed in the sheet. Search again and try again." };
     }
-    return { success: false, message: message };
+
+    const idNumber = String(formData.idNumber || "").trim();
+    sheet.getRange(row, 2).setValue(name);
+    sheet.getRange(row, 3).setValue(formData.sticker || "");
+    sheet.getRange(row, 4).setNumberFormat("@").setValue(idNumber);
+    sheet.getRange(row, 5).setValue(formData.position || "");
+    const date = inductionDateParts_(formData.inductionDate);
+    if (date) {
+      sheet.getRange(row, 6).setValue(date.day);
+      sheet.getRange(row, 7).setValue(date.month);
+      sheet.getRange(row, 8).setValue(date.year);
+    }
+    sheet.getRange(row, 9).setValue(formData.company || "");
+    sheet.getRange(row, 10).setValue(formData.trainer || "");
+    sheet.getRange(row, 11).setValue(formData.notes || "");
+    return { success: true, message: "Induction updated." };
+  } catch (err) {
+    return inductionWriteError_(err);
   }
 }
