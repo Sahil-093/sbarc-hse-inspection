@@ -70,6 +70,9 @@ function inductionRecord_(row, sheetRow) {
     sticker: String(row[2] || "").trim(),
     idNumber: inductionIdText_(row[3]),
     position: String(row[4] || "").trim(),
+    day: inductionIdText_(row[5]),
+    month: String(row[6] || "").trim(),
+    year: inductionIdText_(row[7]),
     inductionDate: inductionDateText_(row),
     dateIso: inductionIso_(row),
     company: String(row[8] || "").trim(),
@@ -107,7 +110,11 @@ function searchInductionLog(query) {
     const id = inductionIdText_(rows[i][3]);
     if (!name && !id) continue;
     const nameHit = name.toLowerCase().indexOf(q) !== -1;
-    const idHit = id && (id.toLowerCase().indexOf(q) !== -1 || (qDigits.length >= 2 && id.replace(/\D/g, "").indexOf(qDigits) !== -1));
+    const idDigits = id.replace(/\D/g, "");
+    let idHit = false;
+    if (id && qDigits.length >= 8) idHit = idDigits === qDigits;
+    else if (id && qDigits.length >= 2) idHit = idDigits.indexOf(qDigits) !== -1;
+    else if (id) idHit = id.toLowerCase().indexOf(q) !== -1;
     if (!nameHit && !idHit) continue;
     records.push(inductionRecord_(rows[i], i + 1));
   }
